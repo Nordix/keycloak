@@ -172,7 +172,6 @@ public class LDAPRule extends ExternalResource {
     }
 
     protected LDAPEmbeddedServer createServer() {
-        defaultProperties.setProperty(LDAPEmbeddedServer.PROPERTY_DSF, LDAPEmbeddedServer.DSF_INMEMORY);
         defaultProperties.setProperty(LDAPEmbeddedServer.PROPERTY_LDIF_FILE, "classpath:ldap/users.ldif");
         defaultProperties.setProperty(PROPERTY_CERTIFICATE_PASSWORD, "secret");
         defaultProperties.setProperty(PROPERTY_KEYSTORE_FILE, new File(PROJECT_BUILD_DIRECTORY, PRIVATE_KEY).getAbsolutePath());

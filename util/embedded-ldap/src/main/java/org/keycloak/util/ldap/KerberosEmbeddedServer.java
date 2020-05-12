@@ -75,7 +75,6 @@ public class KerberosEmbeddedServer extends LDAPEmbeddedServer {
 
     public static void main(String[] args) throws Exception {
         Properties defaultProperties = new Properties();
-        defaultProperties.put(PROPERTY_DSF, DSF_FILE);
 
         String kerberosRealm = System.getProperty("keycloak.kerberos.realm", DEFAULT_KERBEROS_REALM);
         configureDefaultPropertiesForRealm(kerberosRealm, defaultProperties);

@@ -17,18 +17,20 @@
 
 package org.keycloak.util.ldap;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.directory.api.ldap.model.entry.DefaultEntry;
 import org.apache.directory.api.ldap.model.exception.LdapEntryAlreadyExistsException;
 import org.apache.directory.api.ldap.model.ldif.LdifEntry;
 import org.apache.directory.api.ldap.model.ldif.LdifReader;
+import org.apache.directory.api.ldap.model.name.Dn;
 import org.apache.directory.api.ldap.model.schema.SchemaManager;
 import org.apache.directory.server.core.api.DirectoryService;
-import org.apache.directory.server.core.api.partition.Partition;
-import org.apache.directory.server.core.factory.DirectoryServiceFactory;
-import org.apache.directory.server.core.factory.PartitionFactory;
+import org.apache.directory.server.core.api.InstanceLayout;
+import org.apache.directory.server.core.api.interceptor.Interceptor;
+import org.apache.directory.server.core.factory.DefaultDirectoryServiceFactory;
+import org.apache.directory.server.core.normalization.NormalizationInterceptor;
+import org.apache.directory.server.core.partition.impl.avl.AvlPartition;
 import org.apache.directory.server.ldap.ExtendedOperationHandler;
 import org.apache.directory.server.ldap.handlers.extended.StartTlsHandler;
 import org.apache.directory.server.ldap.LdapServer;
@@ -38,9 +40,9 @@ import org.jboss.logging.Logger;
 import org.keycloak.common.util.FindFile;
 import org.keycloak.common.util.StreamUtil;
 
-import java.io.File;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -50,6 +52,7 @@ import java.util.Properties;
 public class LDAPEmbeddedServer {
 
     private static final Logger log = Logger.getLogger(LDAPEmbeddedServer.class);
+    private static final int PAGE_SIZE = 30;
 
     public static final String PROPERTY_BASE_DN = "ldap.baseDN";
     public static final String PROPERTY_BIND_HOST = "ldap.host";
@@ -57,7 +60,6 @@ public class LDAPEmbeddedServer {
     public static final String PROPERTY_BIND_LDAPS_PORT = "ldaps.port";
     public static final String PROPERTY_LDIF_FILE = "ldap.ldif";
     public static final String PROPERTY_SASL_PRINCIPAL = "ldap.saslPrincipal";
-    public static final String PROPERTY_DSF = "ldap.dsf";
     public static final String PROPERTY_ENABLE_ACCESS_CONTROL = "enableAccessControl";
     public static final String PROPERTY_ENABLE_ANONYMOUS_ACCESS = "enableAnonymousAccess";
     public static final String PROPERTY_ENABLE_SSL = "enableSSL";
@@ -70,10 +72,6 @@ public class LDAPEmbeddedServer {
     private static final String DEFAULT_LDIF_FILE = "classpath:ldap/default-users.ldif";
     private static final String PROPERTY_KEYSTORE_FILE = "keystoreFile";
     private static final String PROPERTY_CERTIFICATE_PASSWORD = "certificatePassword";
-
-    public static final String DSF_INMEMORY = "mem";
-    public static final String DSF_FILE = "file";
-    public static final String DEFAULT_DSF = DSF_FILE;
 
     protected Properties defaultProperties;
 
@@ -104,7 +102,6 @@ public class LDAPEmbeddedServer {
 
     public static void main(String[] args) throws Exception {
         Properties defaultProperties = new Properties();
-        defaultProperties.put(PROPERTY_DSF, DSF_FILE);
 
         execute(args, defaultProperties);
     }
@@ -139,7 +136,6 @@ public class LDAPEmbeddedServer {
         this.bindLdapsPort = Integer.parseInt(bindLdapsPort);
         this.ldifFile = readProperty(PROPERTY_LDIF_FILE, DEFAULT_LDIF_FILE);
         this.ldapSaslPrincipal = readProperty(PROPERTY_SASL_PRINCIPAL, null);
-        this.directoryServiceFactory = readProperty(PROPERTY_DSF, DEFAULT_DSF);
         this.enableAccessControl = Boolean.valueOf(readProperty(PROPERTY_ENABLE_ACCESS_CONTROL, "false"));
         this.enableAnonymousAccess = Boolean.valueOf(readProperty(PROPERTY_ENABLE_ANONYMOUS_ACCESS, "false"));
         this.enableSSL = Boolean.valueOf(readProperty(PROPERTY_ENABLE_SSL, "false"));
@@ -196,39 +192,38 @@ public class LDAPEmbeddedServer {
         String dcName = baseDN.split(",")[0];
         dcName = dcName.substring(dcName.indexOf("=") + 1);
 
-        DirectoryServiceFactory dsf;
-        if (this.directoryServiceFactory.equals(DSF_INMEMORY)) {
-            dsf = new InMemoryDirectoryServiceFactory();
-        } else if (this.directoryServiceFactory.equals(DSF_FILE)) {
-            dsf = new FileDirectoryServiceFactory();
-        } else {
-            throw new IllegalStateException("Unknown value of directoryServiceFactory: " + this.directoryServiceFactory);
-        }
+        DefaultDirectoryServiceFactory dsf = new DefaultDirectoryServiceFactory();
+        dsf.init(dcName);
 
         DirectoryService service = dsf.getDirectoryService();
         service.setAccessControlEnabled(enableAccessControl);
         service.setAllowAnonymousAccess(enableAnonymousAccess);
         service.getChangeLog().setEnabled(false);
 
-        dsf.init(dcName + "DS");
+        InstanceLayout instanceLayout = new InstanceLayout(System.getProperty( "java.io.tmpdir" ) + "/server-work-" + dcName + "DS");
+        service.setInstanceLayout(instanceLayout);
 
-        SchemaManager schemaManager = service.getSchemaManager();
+        // Find Normalization interceptor in chain and add our range emulated interceptor
+        List<Interceptor> interceptors = service.getInterceptors();
+        int insertionPosition = -1;
+        for (int pos = 0; pos < interceptors.size(); ++pos) {
+            Interceptor interceptor = interceptors.get(pos);
+            if (interceptor instanceof NormalizationInterceptor) {
+                insertionPosition = pos;
+            }
+        }
+        interceptors.add(insertionPosition + 1, new RangedAttributeInterceptor("member", PAGE_SIZE));
+        service.setInterceptors(interceptors);
 
-        PartitionFactory partitionFactory = dsf.getPartitionFactory();
-        Partition partition = partitionFactory.createPartition(
-                schemaManager,
-                service.getDnFactory(),
-                dcName,
-                this.baseDN,
-                1000,
-                new File(service.getInstanceLayout().getPartitionsDirectory(), dcName));
-        partition.setCacheService( service.getCacheService() );
+        AvlPartition partition = new AvlPartition(service.getSchemaManager());
+        partition.setId(dcName);
+        partition.setSuffixDn(new Dn(service.getSchemaManager(), this.baseDN));
         partition.initialize();
-
-        partition.setSchemaManager( schemaManager );
 
         // Inject the partition into the DirectoryService
         service.addPartition( partition );
+
+        service.startup();
 
         // Last, process the context entry
         String entryLdif =
@@ -354,15 +349,6 @@ public class LDAPEmbeddedServer {
     protected void shutdownDirectoryService() throws Exception {
         log.info("Stopping Directory service.");
         directoryService.shutdown();
-
-        // Delete workfiles just for 'inmemory' implementation used in tests. Normally we want LDAP data to persist
-        File instanceDir = directoryService.getInstanceLayout().getInstanceDirectory();
-        if (this.directoryServiceFactory.equals(DSF_INMEMORY)) {
-            log.infof("Removing Directory service workfiles: %s", instanceDir.getAbsolutePath());
-            FileUtils.deleteDirectory(instanceDir);
-        } else {
-            log.info("Working LDAP directory not deleted. Delete it manually if you want to start with fresh LDAP data. Directory location: " + instanceDir.getAbsolutePath());
-        }
     }
 
 }

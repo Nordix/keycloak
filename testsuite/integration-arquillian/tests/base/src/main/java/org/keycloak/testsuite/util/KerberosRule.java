@@ -72,7 +72,6 @@ public class KerberosRule extends LDAPRule {
     @Override
     protected LDAPEmbeddedServer createServer() {
         Properties defaultProperties = new Properties();
-        defaultProperties.setProperty(LDAPEmbeddedServer.PROPERTY_DSF, LDAPEmbeddedServer.DSF_INMEMORY);
 
         KerberosEmbeddedServer.configureDefaultPropertiesForRealm(this.kerberosRealm, defaultProperties);
 
