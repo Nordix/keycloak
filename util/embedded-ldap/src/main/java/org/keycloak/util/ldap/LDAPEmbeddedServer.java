@@ -25,10 +25,16 @@ import org.apache.directory.api.ldap.model.exception.LdapEntryAlreadyExistsExcep
 import org.apache.directory.api.ldap.model.exception.LdapException;
 import org.apache.directory.api.ldap.model.ldif.LdifEntry;
 import org.apache.directory.api.ldap.model.ldif.LdifReader;
+import org.apache.directory.api.ldap.model.name.Dn;
 import org.apache.directory.api.ldap.model.schema.SchemaManager;
 import org.apache.directory.server.core.api.DirectoryService;
+import org.apache.directory.server.core.api.InterceptorEnum;
+import org.apache.directory.server.core.api.authn.ppolicy.CheckQualityEnum;
+import org.apache.directory.server.core.api.authn.ppolicy.PasswordPolicyConfiguration;
 import org.apache.directory.server.core.api.interceptor.Interceptor;
 import org.apache.directory.server.core.api.partition.Partition;
+import org.apache.directory.server.core.authn.AuthenticationInterceptor;
+import org.apache.directory.server.core.authn.ppolicy.PpolicyConfigContainer;
 import org.apache.directory.server.core.factory.AvlPartitionFactory;
 import org.apache.directory.server.core.factory.DefaultDirectoryServiceFactory;
 import org.apache.directory.server.core.factory.JdbmPartitionFactory;
@@ -243,6 +249,21 @@ public class LDAPEmbeddedServer {
                         "objectClass: top\n" +
                         "objectClass: domain\n\n";
         importLdifContent(service, entryLdif);
+
+        PasswordPolicyConfiguration policyConfig;
+        policyConfig = new PasswordPolicyConfiguration();
+        policyConfig.setPwdCheckQuality( CheckQualityEnum.CHECK_REJECT ); // DO NOT allow the password if its quality can't be checked
+        policyConfig.setPwdMinLength(8);
+        PpolicyConfigContainer policyContainer = new PpolicyConfigContainer();
+        Dn defaultPolicyDn = new Dn( service.getSchemaManager(), "cn=default" );
+        policyContainer.addPolicy( defaultPolicyDn, policyConfig );
+        policyContainer.setDefaultPolicyDn(defaultPolicyDn);
+
+
+        AuthenticationInterceptor authenticationInterceptor = ( AuthenticationInterceptor ) service.getInterceptor( InterceptorEnum.AUTHENTICATION_INTERCEPTOR.getName() );
+
+        authenticationInterceptor.setPwdPolicies(policyContainer);
+
 
 
         if (this.directoryServiceFactory.equals(DSF_INMEMORY)) {
