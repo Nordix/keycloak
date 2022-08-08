@@ -23,7 +23,6 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.storage.ldap.idm.store.ldap.LDAPIdentityStore;
-import org.keycloak.storage.ldap.idm.store.ldap.LDAPSSLSocketFactory;
 import org.keycloak.storage.ldap.mappers.LDAPConfigDecorator;
 
 import java.util.Map;
@@ -84,8 +83,6 @@ public class LDAPIdentityStoreRegistry {
         checkSystemProperty("com.sun.jndi.ldap.connect.pool.timeout", cfg.getConnectionPoolingTimeout(), "300000");
         checkSystemProperty("com.sun.jndi.ldap.connect.pool.protocol", cfg.getConnectionPoolingProtocol(), "plain ssl");
         checkSystemProperty("com.sun.jndi.ldap.connect.pool.debug", cfg.getConnectionPoolingDebug(), "off");
-
-        LDAPSSLSocketFactory.initialize(session);
 
         return new LDAPIdentityStore(session, cfg);
     }

@@ -17,24 +17,7 @@
 
 package org.keycloak.models;
 
-import java.security.InvalidAlgorithmParameterException;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.KeyStore.Builder;
 import java.util.Map;
-
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.KeyStoreBuilderParameters;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-
-import org.keycloak.keystore.KeyStoreProvider;
-import org.keycloak.truststore.TruststoreProvider;
 
 /**
  * @author <a href="mailto:mposolda@redhat.com">Marek Posolda</a>
@@ -185,7 +168,7 @@ public class LDAPConstants {
         }
 
         if (shouldSetTruststore) {
-            env.put("java.naming.ldap.factory.socket", "org.keycloak.truststore.SSLSocketFactory");
+            env.put("java.naming.ldap.factory.socket", "org.keycloak.storage.ldap.idm.store.ldap.LDAPSSLSocketFactory");
         }
     }
 

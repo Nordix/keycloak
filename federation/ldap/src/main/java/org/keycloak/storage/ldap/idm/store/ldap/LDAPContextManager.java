@@ -58,6 +58,9 @@ public final class LDAPContextManager implements AutoCloseable {
     public LDAPContextManager(KeycloakSession session, LDAPConfig connectionProperties) {
         this.session = session;
         this.ldapConfig = connectionProperties;
+
+        // Initialize LDAP socket factory that utilizes TrustStore SPI and KeyStore SPI.
+        LDAPSSLSocketFactory.initialize(session);
     }
 
     public static LDAPContextManager create(KeycloakSession session, LDAPConfig connectionProperties) {

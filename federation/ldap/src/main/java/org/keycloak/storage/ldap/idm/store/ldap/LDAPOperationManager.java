@@ -512,6 +512,9 @@ public class LDAPOperationManager {
                 SSLSocketFactory sslSocketFactory = null;
                 String useTruststoreSpi = config.getUseTruststoreSpi();
                 if (useTruststoreSpi != null && useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_ALWAYS)) {
+                    // In this code path LDAPContextManager is not used, so we'd need to make sure that
+                    // the SSL socket factory has been initialized before using.
+                    LDAPSSLSocketFactory.initialize(session);
                     sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 

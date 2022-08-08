@@ -32,14 +32,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.jboss.logging.Logger;
-
 /**
  * KeyStore that can reload the wrapped delegate {@code KeyStore} when the backing files have been changed on disk.
  */
 public class ReloadingKeyStore extends KeyStore {
-
-    private static final Logger log = Logger.getLogger(ReloadingKeyStore.class);
 
     protected ReloadingKeyStore(KeyStoreSpi keyStoreSpi)
             throws NoSuchAlgorithmException, CertificateException, IOException {

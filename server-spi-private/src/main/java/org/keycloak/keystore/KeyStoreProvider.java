@@ -38,7 +38,7 @@ public interface KeyStoreProvider extends Provider {
 
     /**
      * Loads KeyStore of given identifier and returns a KeyStore.Builder.
-     * Builder encapsulates both KeyStore and key entry password(s).
+     * Builder encapsulates both KeyStore and KeyEntry password(s).
      *
      * @param keyStoreIdentifier Identifier of the wanted KeyStore, such as LDAP_CLIENT_KEYSTORE.
      * @return Builder for KeyStore.

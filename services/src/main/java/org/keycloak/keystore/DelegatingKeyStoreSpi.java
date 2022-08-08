@@ -147,8 +147,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            Date result = delegate.get().keyStore.getCreationDate(alias);
-            return result;
+            return delegate.get().keyStore.getCreationDate(alias);
         } catch (KeyStoreException e) {
             log.error("getCreationDate() failed:", e);
             return null;
@@ -172,8 +171,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            boolean result = delegate.get().keyStore.containsAlias(alias);
-            return result;
+            return delegate.get().keyStore.containsAlias(alias);
         } catch (KeyStoreException e) {
             log.error("containsAlias() failed:", e);
             return false;
@@ -185,8 +183,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            int result = delegate.get().keyStore.size();
-            return result;
+            return delegate.get().keyStore.size();
         } catch (KeyStoreException e) {
             log.error("size() failed:", e);
             return 0;
@@ -198,8 +195,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            boolean result = delegate.get().keyStore.isKeyEntry(alias);
-            return result;
+            return delegate.get().keyStore.isKeyEntry(alias);
         } catch (KeyStoreException e) {
             log.error("isKeyEntry() failed:", e);
             return false;
@@ -211,8 +207,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            boolean result = delegate.get().keyStore.isCertificateEntry(alias);
-            return result;
+            return delegate.get().keyStore.isCertificateEntry(alias);
         } catch (KeyStoreException e) {
             log.error("isCertificateEntry() failed;", e);
             return false;
@@ -224,8 +219,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
         refreshCachedKeyStore();
 
         try {
-            String result = delegate.get().keyStore.getCertificateAlias(cert);
-            return result;
+            return delegate.get().keyStore.getCertificateAlias(cert);
         } catch (KeyStoreException e) {
             log.error("getCertificateAlias() failed:", e);
             return null;

@@ -77,11 +77,19 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
 
     @Override
     public void init(Scope config) {
+        // Allow changing the default duration that defines how frequently at most the backing file(s) will be checked
+        // for modification. The value is parsed as ISO8601 time duration (e.g. "1s", "2m30s", "1h").
+        String cacheTtl = config.get("keyStoreCacheTtl");
+        if (cacheTtl != null) {
+            log.infov("Setting reloading keyStore cache TTL to {0}", cacheTtl);
+            ReloadingKeyStore.setDefaultKeyStoreCacheTtl(Duration.parse("PT" + cacheTtl));
+        }
 
         // Check if LDAP credentials are given as PEM files.
         String ldapCertificateFile = config.get("ldapCertificateFile");
         String ldapCertificateKeyFile = config.get("ldapCertificateKeyFile");
         if (ldapCertificateFile != null && ldapCertificateKeyFile != null) {
+            log.infov("Loading client credentials for LDAP federation: {0}, {1}", ldapCertificateFile, ldapCertificateKeyFile);
             try {
                 ldapKeyStoreBuilder = ReloadingKeyStore.Builder.fromPem(Paths.get(ldapCertificateFile), Paths.get(ldapCertificateKeyFile));
                 return;
@@ -96,27 +104,28 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         String ldapKeyStoreFile = config.get("ldapKeyStoreFile");
         String ldapKeyStorePassword = config.get("ldapKeyStorePassword");
         String ldapKeyStoreType = config.get("ldapKeyStoreType", "JKS");
-        if (ldapKeyStoreFile != null && ldapKeyStorePassword != null && ldapKeyStoreType != null) {
-            if (ldapKeyStoreBuilder == null) {
-                try {
-                    ldapKeyStoreBuilder = ReloadingKeyStore.Builder
-                            .fromKeyStoreFile(ldapKeyStoreType, Paths.get(ldapKeyStoreFile), ldapKeyStorePassword);
-                } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
-                    throw new RuntimeException("Failed to initialize keystore: " + e.toString());
-                }
-            } else {
-                log.warnv(
-                        "Both PEM files and KeyStore was configured for LDAP, loading PEM files only");
+
+        // Check if both PEM files and KeyStore is configured.
+        if (ldapKeyStoreBuilder != null && ldapKeyStoreFile != null) {
+            log.warn("Both PEM files and KeyStore was configured for LDAP federation");
+            throw new IllegalArgumentException("Both PEM files and KeyStore was configured for LDAP federation");
+        }
+
+        // Check if keyStore file is configured without password.
+        if (ldapKeyStoreFile != null && ldapKeyStorePassword == null) {
+            log.errorv("Password not given for LDAP client keystore {0}", ldapKeyStoreFile);
+            throw new IllegalArgumentException("Password not given for LDAP client keystore: " + ldapKeyStoreFile);
+        }
+
+        if (ldapKeyStoreFile != null) {
+            try {
+                log.infov("Loading client credentials for LDAP federation: {0}", ldapKeyStoreFile);
+                ldapKeyStoreBuilder = ReloadingKeyStore.Builder
+                        .fromKeyStoreFile(ldapKeyStoreType, Paths.get(ldapKeyStoreFile), ldapKeyStorePassword);
+            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
+                throw new RuntimeException("Failed to initialize keystore: " + e.toString());
             }
         }
-
-        // Allow changing the default duration that defines how frequently at most the backing file(s) will be checked
-        // for modification. The value is parsed as ISO8601 time duration (e.g. "1s", "2m30s", "1h").
-        String cacheTtl = config.get("keyStoreCacheTtl");
-        if (cacheTtl != null) {
-            ReloadingKeyStore.setDefaultKeyStoreCacheTtl(Duration.parse("PT" + cacheTtl));
-        }
-
     }
 
     @Override
