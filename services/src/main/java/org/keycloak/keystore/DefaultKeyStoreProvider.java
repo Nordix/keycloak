@@ -89,11 +89,11 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         String ldapCertificateFile = config.get("ldapCertificateFile");
         String ldapCertificateKeyFile = config.get("ldapCertificateKeyFile");
         if (ldapCertificateFile != null && ldapCertificateKeyFile != null) {
-            log.infov("Loading client credentials for LDAP federation: {0}, {1}", ldapCertificateFile, ldapCertificateKeyFile);
+            log.infov("Loading client credentials for LDAP federation: {0}, {1}", ldapCertificateFile,
+                    ldapCertificateKeyFile);
             try {
-                ldapKeyStoreBuilder = ReloadingKeyStore.Builder.fromPem(Paths.get(ldapCertificateFile), Paths.get(ldapCertificateKeyFile));
-                return;
-
+                ldapKeyStoreBuilder = ReloadingKeyStore.Builder.fromPem(Paths.get(ldapCertificateFile),
+                        Paths.get(ldapCertificateKeyFile));
             } catch (NoSuchAlgorithmException | CertificateException | IllegalArgumentException | KeyStoreException
                     | InvalidKeySpecException | IOException e) {
                 throw new RuntimeException("Failed to initialize keystore: " + e.toString());
@@ -101,14 +101,14 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         }
 
         // Check if LDAP credentials are given as KeyStore file.
-        String ldapKeyStoreFile = config.get("ldapKeyStoreFile");
-        String ldapKeyStorePassword = config.get("ldapKeyStorePassword");
-        String ldapKeyStoreType = config.get("ldapKeyStoreType", "JKS");
+        String ldapKeyStoreFile = config.get("ldapKeystoreFile");
+        String ldapKeyStorePassword = config.get("ldapKeystorePassword");
+        String ldapKeyStoreType = config.get("ldapKeystoreType", "JKS");
 
         // Check if both PEM files and KeyStore is configured.
         if (ldapKeyStoreBuilder != null && ldapKeyStoreFile != null) {
             log.warn("Both PEM files and KeyStore was configured for LDAP federation");
-            throw new IllegalArgumentException("Both PEM files and KeyStore was configured for LDAP federation");
+            throw new IllegalArgumentException("Both PEM files and KeyStore was configured for LDAP federation. Choose only one.");
         }
 
         // Check if keyStore file is configured without password.

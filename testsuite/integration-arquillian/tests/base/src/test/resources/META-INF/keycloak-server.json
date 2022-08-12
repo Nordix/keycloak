@@ -318,8 +318,8 @@
 
     "keystore": {
         "default": {
-            "ldapKeyStoreFile": "${keycloak.truststore.file:target/dependency/keystore/keycloak.jks}",
-            "ldapKeyStorePassword": "${keycloak.keystore.password:secret}"
+            "ldapKeystoreFile": "${keycloak.truststore.file:target/dependency/keystore/keycloak.jks}",
+            "ldapKeystorePassword": "${keycloak.keystore.password:secret}"
 
         }
     },
