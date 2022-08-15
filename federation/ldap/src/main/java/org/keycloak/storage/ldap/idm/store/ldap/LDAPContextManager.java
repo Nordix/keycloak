@@ -4,7 +4,6 @@ import org.jboss.logging.Logger;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.storage.ldap.LDAPConfig;
-import org.keycloak.truststore.TruststoreProvider;
 import org.keycloak.vault.VaultCharSecret;
 
 import javax.naming.AuthenticationException;
@@ -59,6 +58,9 @@ public final class LDAPContextManager implements AutoCloseable {
     public LDAPContextManager(KeycloakSession session, LDAPConfig connectionProperties) {
         this.session = session;
         this.ldapConfig = connectionProperties;
+
+        // Initialize LDAP socket factory that utilizes TrustStore SPI and KeyStore SPI.
+        LDAPSSLSocketFactory.initialize(session);
     }
 
     public static LDAPContextManager create(KeycloakSession session, LDAPConfig connectionProperties) {
@@ -82,8 +84,7 @@ public final class LDAPContextManager implements AutoCloseable {
             SSLSocketFactory sslSocketFactory = null;
             String useTruststoreSpi = ldapConfig.getUseTruststoreSpi();
             if (useTruststoreSpi != null && useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_ALWAYS)) {
-                TruststoreProvider provider = session.getProvider(TruststoreProvider.class);
-                sslSocketFactory = provider.getSSLSocketFactory();
+                sslSocketFactory = LDAPSSLSocketFactory.getDefault();
             }
 
             tlsResponse = startTLS(ldapContext, ldapConfig.getAuthType(), ldapConfig.getBindDN(),
