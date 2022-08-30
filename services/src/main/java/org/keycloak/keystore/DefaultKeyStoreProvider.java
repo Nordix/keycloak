@@ -37,6 +37,7 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
     private static final Logger log = Logger.getLogger(DefaultKeyStoreProvider.class);
 
     private KeyStore.Builder ldapKeyStoreBuilder;
+    private KeyStore.Builder httpsKeyStoreBuilder;
 
     @Override
     public void close() {
@@ -65,6 +66,9 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         if (keyStoreIdentifier.equals(LDAP_CLIENT_KEYSTORE)) {
             return ldapKeyStoreBuilder;
         }
+        if (keyStoreIdentifier.equals(HTTPS_SERVER_KEYSTORE)) {
+            return httpsKeyStoreBuilder;
+        }
 
         log.errorv("loadKeyStoreBuilder was called with invalid keystore identifier {0}", keyStoreIdentifier);
         throw new IllegalArgumentException("invalid keystore requested, keyStoreIdentifier:" + keyStoreIdentifier);
@@ -85,47 +89,56 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
             ReloadingKeyStore.setDefaultKeyStoreCacheTtl(Duration.parse("PT" + cacheTtl));
         }
 
-        // Check if LDAP credentials are given as PEM files.
-        String ldapCertificateFile = config.get("ldapCertificateFile");
-        String ldapCertificateKeyFile = config.get("ldapCertificateKeyFile");
-        if (ldapCertificateFile != null && ldapCertificateKeyFile != null) {
-            log.infov("Loading client credentials for LDAP federation: {0}, {1}", ldapCertificateFile,
-                    ldapCertificateKeyFile);
+        ldapKeyStoreBuilder = getKeyStore(config, "ldap");
+        httpsKeyStoreBuilder = getKeyStore(config, "https");
+
+    }
+
+    private KeyStore.Builder getKeyStore(Scope config, String prefix) {
+        KeyStore.Builder keyStoreBuilder = null;
+
+        // Check if credentials are given as PEM files.
+        String certificateFile = config.get(prefix + "CertificateFile");
+        String certificateKeyFile = config.get(prefix + "CertificateKeyFile");
+        if (certificateFile != null && certificateKeyFile != null) {
+            log.infov("Loading credentials: {0}, {1}", certificateFile, certificateKeyFile);
             try {
-                ldapKeyStoreBuilder = ReloadingKeyStore.Builder.fromPem(Paths.get(ldapCertificateFile),
-                        Paths.get(ldapCertificateKeyFile));
+                keyStoreBuilder = ReloadingKeyStore.Builder.fromPem(Paths.get(certificateFile),
+                        Paths.get(certificateKeyFile));
             } catch (NoSuchAlgorithmException | CertificateException | IllegalArgumentException | KeyStoreException
                     | InvalidKeySpecException | IOException e) {
-                throw new RuntimeException("Failed to initialize keystore: " + e.toString());
+                throw new RuntimeException("Failed to initialize " + prefix + " keystore: " + e.toString());
             }
         }
 
-        // Check if LDAP credentials are given as KeyStore file.
-        String ldapKeyStoreFile = config.get("ldapKeystoreFile");
-        String ldapKeyStorePassword = config.get("ldapKeystorePassword");
-        String ldapKeyStoreType = config.get("ldapKeystoreType", "JKS");
+        // Check if credentials are given as KeyStore file.
+        String keyStoreFile = config.get(prefix + "KeystoreFile");
+        String keyStorePassword = config.get(prefix + "KeystorePassword");
+        String keyStoreType = config.get(prefix + "KeystoreType", "JKS");
 
         // Check if both PEM files and KeyStore is configured.
-        if (ldapKeyStoreBuilder != null && ldapKeyStoreFile != null) {
-            log.warn("Both PEM files and KeyStore was configured for LDAP federation");
-            throw new IllegalArgumentException("Both PEM files and KeyStore was configured for LDAP federation. Choose only one.");
+        if (keyStoreBuilder != null && keyStoreFile != null) {
+            log.errorv("Both PEM files and KeyStore was configured for {0}. Choose only one.", prefix);
+            throw new IllegalArgumentException("Both PEM files and KeyStore was configured for " + prefix + ". Choose only one.");
         }
 
         // Check if keyStore file is configured without password.
-        if (ldapKeyStoreFile != null && ldapKeyStorePassword == null) {
-            log.errorv("Password not given for LDAP client keystore {0}", ldapKeyStoreFile);
-            throw new IllegalArgumentException("Password not given for LDAP client keystore: " + ldapKeyStoreFile);
+        if (keyStoreFile != null && keyStorePassword == null) {
+            log.errorv("Password not given for {0} keystore {1}", prefix, keyStoreFile);
+            throw new IllegalArgumentException("Password not given for " + prefix + " keystore: " + keyStoreFile);
         }
 
-        if (ldapKeyStoreFile != null) {
+        if (keyStoreFile != null) {
             try {
-                log.infov("Loading client credentials for LDAP federation: {0}", ldapKeyStoreFile);
+                log.infov("Loading credentials for {0}: {1}", prefix, keyStoreFile);
                 ldapKeyStoreBuilder = ReloadingKeyStore.Builder
-                        .fromKeyStoreFile(ldapKeyStoreType, Paths.get(ldapKeyStoreFile), ldapKeyStorePassword);
+                        .fromKeyStoreFile(keyStoreType, Paths.get(keyStoreFile), keyStorePassword);
             } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
-                throw new RuntimeException("Failed to initialize keystore: " + e.toString());
+                throw new RuntimeException("Failed to initialize " + prefix + " keystore: " + e.toString());
             }
         }
+
+        return keyStoreBuilder;
     }
 
     @Override

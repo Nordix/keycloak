@@ -40,7 +40,7 @@
         <resteasy.version>4.7.5.Final</resteasy.version>
         <jackson.version>2.13.3</jackson.version>
         <jackson.databind.version>2.13.3</jackson.databind.version>
-        <hibernate.core.version>5.6.5.Final</hibernate.core.version>
+        <hibernate.core.version>5.6.8.Final</hibernate.core.version>
         <mysql.driver.version>8.0.28</mysql.driver.version>
         <postgresql.version>42.3.3</postgresql.version>
         <microprofile-metrics-api.version>3.0.1</microprofile-metrics-api.version>
@@ -79,7 +79,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            
+
             <!-- Override the dependencies below to use the versions used by Keycloak -->
             <dependency>
                 <groupId>org.infinispan</groupId>
@@ -156,7 +156,7 @@
             </plugins>
         </pluginManagement>
     </build>
-    
+
     <modules>
         <module>config-api</module>
         <module>runtime</module>
@@ -184,5 +184,5 @@
             </snapshots>
         </repository>
     </repositories>
-    
+
 </project>

@@ -27,6 +27,7 @@ import org.keycloak.provider.Provider;
 public interface KeyStoreProvider extends Provider {
 
     public static final String LDAP_CLIENT_KEYSTORE = "ldap-client-keystore";
+    public static final String HTTPS_SERVER_KEYSTORE = "https-server-keystore";
 
     /**
      * Loads KeyStore of given identifier.
