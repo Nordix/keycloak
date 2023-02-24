@@ -142,9 +142,6 @@ public final class LdapMapContextManager implements AutoCloseable {
             throw new AuthenticationException("Could not negotiate TLS");
         }
 
-        // throws AuthenticationException when authentication fails
-        ldapContext.lookup("");
-
         return tls;
     }
 
