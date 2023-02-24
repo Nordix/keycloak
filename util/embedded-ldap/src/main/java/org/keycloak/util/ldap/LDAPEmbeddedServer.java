@@ -20,12 +20,16 @@ package org.keycloak.util.ldap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.directory.api.ldap.model.constants.SchemaConstants;
+import org.apache.directory.api.ldap.model.constants.SupportedSaslMechanisms;
 import org.apache.directory.api.ldap.model.entry.DefaultEntry;
 import org.apache.directory.api.ldap.model.exception.LdapEntryAlreadyExistsException;
 import org.apache.directory.api.ldap.model.exception.LdapException;
 import org.apache.directory.api.ldap.model.exception.LdapInvalidDnException;
 import org.apache.directory.api.ldap.model.ldif.LdifEntry;
 import org.apache.directory.api.ldap.model.ldif.LdifReader;
+import org.apache.directory.api.ldap.model.message.ModifyRequest;
+import org.apache.directory.api.ldap.model.message.ModifyRequestImpl;
 import org.apache.directory.api.ldap.model.name.Dn;
 import org.apache.directory.api.ldap.model.schema.SchemaManager;
 import org.apache.directory.server.core.api.DirectoryService;
@@ -46,10 +50,13 @@ import org.apache.directory.server.protocol.shared.transport.TcpTransport;
 import org.apache.directory.server.protocol.shared.transport.Transport;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.FindFile;
+import org.keycloak.common.util.KeystoreUtil;
 import org.keycloak.common.util.StreamUtil;
 
 import java.io.File;
 import java.io.InputStream;
+import java.security.KeyStore;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,6 +84,9 @@ public class LDAPEmbeddedServer {
     public static final String PROPERTY_SET_CONFIDENTIALITY_REQUIRED = "setConfidentialityRequired";
     public static final String PROPERTY_PPOLICY_ENABLED = "ppolicy.enabled";
     public static final String PROPERTY_PPOLICY_MUST_CHANGE = "ppolicy.mustChange";
+    public static final String PROPERTY_ADMIN_CERTIFICATE_KEYSTORE = "adminCertificateKeyStore";
+    public static final String PROPERTY_ADMIN_CERTIFICATE_KEYSTORE_PASSWORD = "adminCredentialKeyStorePassword";
+    public static final String PROPERTY_REQUIRE_CLIENT_CERTIFICATE = "requireClientCertificate";
 
     private static final String DEFAULT_BASE_DN = "dc=keycloak,dc=org";
     private static final String DEFAULT_BIND_HOST = "localhost";
@@ -108,6 +118,9 @@ public class LDAPEmbeddedServer {
     protected String certPassword;
     protected boolean ppolicyEnabled = false;
     protected boolean ppolicyMustChange = false;
+    protected String adminCertificateKeyStore;
+    protected String adminCertificateKeyStorePassword;
+    protected boolean requireClientCertificate = false;
 
     protected DirectoryService directoryService;
     protected LdapServer ldapServer;
@@ -167,6 +180,9 @@ public class LDAPEmbeddedServer {
         this.certPassword = readProperty(PROPERTY_CERTIFICATE_PASSWORD, null);
         this.ppolicyEnabled = Boolean.valueOf(readProperty(PROPERTY_PPOLICY_MUST_CHANGE, "false"));
         this.ppolicyMustChange = Boolean.valueOf(readProperty(PROPERTY_PPOLICY_MUST_CHANGE, "false"));
+        this.adminCertificateKeyStore = readProperty(PROPERTY_ADMIN_CERTIFICATE_KEYSTORE, null);
+        this.adminCertificateKeyStorePassword = readProperty(PROPERTY_ADMIN_CERTIFICATE_KEYSTORE_PASSWORD, null);
+        this.requireClientCertificate = Boolean.valueOf(readProperty(PROPERTY_REQUIRE_CLIENT_CERTIFICATE, "false"));
     }
 
     protected String readProperty(String propertyName, String defaultValue) {
@@ -266,6 +282,9 @@ public class LDAPEmbeddedServer {
                         "objectClass: domain\n\n";
         importLdifContent(service, entryLdif);
 
+        if (adminCertificateKeyStore != null) {
+            setAdminCertificate(service);
+        }
 
         if (this.directoryServiceFactory.equals(DSF_INMEMORY)) {
             // Find Normalization interceptor in chain and add our range emulated interceptor
@@ -304,6 +323,10 @@ public class LDAPEmbeddedServer {
             if (enableSSL) {
                 Transport ldaps = new TcpTransport(this.bindHost, this.bindLdapsPort, 3, 50);
                 ldaps.setEnableSSL(true);
+                if (requireClientCertificate) {
+                    ((TcpTransport)ldaps).setWantClientAuth(true);
+                    ((TcpTransport)ldaps).setNeedClientAuth(true);
+                }
                 ldapServer.addTransports( ldaps );
                 if (ldaps.isSSLEnabled()) {
                     log.info("Enabled SSL support on the LDAP server.");
@@ -321,6 +344,11 @@ public class LDAPEmbeddedServer {
                         break;
                     }
                 }
+            }
+            // Enable SASL EXTERNAL authentication method for client certificate based authentication.
+            if (requireClientCertificate) {
+                ldapServer.addSaslMechanismHandler(SupportedSaslMechanisms.EXTERNAL, new CertificateMechanismHandler());
+                ((TcpTransport)ldap).setWantClientAuth(true);
             }
         }
 
@@ -405,6 +433,22 @@ public class LDAPEmbeddedServer {
         }
     }
 
+    private void setAdminCertificate(DirectoryService directoryService) throws Exception {
+        log.info("Setting LDAP admin certificate from keystore: " + adminCertificateKeyStore);
+        KeyStore store = KeystoreUtil.loadKeyStore(adminCertificateKeyStore, adminCertificateKeyStorePassword);
+        Enumeration<String> aliases = store.aliases();
+        byte[] certificate = null;
+        while (aliases.hasMoreElements()) {
+            String alias = aliases.nextElement();
+            certificate = store.getCertificate(alias).getEncoded();
+        }
+
+        ModifyRequest modifyRequest = new ModifyRequestImpl();
+        Dn adminDn = new Dn("uid=admin,ou=system");
+        modifyRequest.setName(adminDn);
+        modifyRequest.add(SchemaConstants.USER_CERTIFICATE_AT, certificate);
+        directoryService.getAdminSession().modify(modifyRequest);
+    }
 
     public void stop() throws Exception {
         stopLdapServer();
