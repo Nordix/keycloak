@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -633,15 +632,6 @@ public class LDAPStorageProvider implements UserStorageProvider,
 
             try {
                 ldapIdentityStore.validatePassword(ldapUser, password);
-                return true;
-            } catch (ChangePasswordAfterResetException e) {
-                if (user.getRequiredActionsStream()
-                        .noneMatch(action -> Objects.equals(action, UserModel.RequiredAction.UPDATE_PASSWORD.name()))) {
-                    logger.debugf("Adding requiredAction UPDATE_PASSWORD to user %s", user.getUsername());
-                    user.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
-                } else {
-                    logger.tracef("Skip adding required action UPDATE_PASSWORD. It was already set on user '%s' in realm '%s'", user.getUsername(), realm.getName());
-                }
                 return true;
             } catch (AuthenticationException ae) {
                 AtomicReference<Boolean> processed = new AtomicReference<>(false);

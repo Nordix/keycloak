@@ -24,8 +24,6 @@ import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.ModelException;
 import org.keycloak.models.map.storage.ldap.config.LdapMapConfig;
 import org.keycloak.models.map.storage.ldap.model.LdapMapDn;
-import org.keycloak.models.map.storage.ldap.store.control.PasswordPolicyResponseControl;
-import org.keycloak.models.map.storage.ldap.store.control.PasswordPolicyResponseControlFactory;
 import org.keycloak.truststore.TruststoreProvider;
 
 import javax.naming.AuthenticationException;
@@ -40,8 +38,6 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
-import javax.naming.ldap.BasicControl;
-import javax.naming.ldap.Control;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 import javax.naming.ldap.LdapName;
@@ -400,18 +396,14 @@ public class LdapMapOperationManager implements AutoCloseable {
             // Never use connection pool to prevent password caching
             env.put("com.sun.jndi.ldap.connect.pool", "false");
 
-            // Send a passwordPolicyRequest control as non-critical.
-            env.put(LdapContext.CONTROL_FACTORIES, PasswordPolicyResponseControlFactory.class.getName());
-            Control[] connCtls = { new BasicControl(PasswordPolicyResponseControl.OID, false, null) };
-
             if(!this.config.isStartTls()) {
                 env.put(Context.SECURITY_AUTHENTICATION, "simple");
                 env.put(Context.SECURITY_PRINCIPAL, dn);
                 env.put(Context.SECURITY_CREDENTIALS, password);
-                authCtx = new InitialLdapContext(env, connCtls);
-            } else {
-                authCtx = new InitialLdapContext(env, null);
+            }
 
+            authCtx = new InitialLdapContext(env, null);
+            if (config.isStartTls()) {
                 SSLSocketFactory sslSocketFactory = null;
                 String useTruststoreSpi = config.getUseTruststoreSpi();
                 if (useTruststoreSpi != null && useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_ALWAYS)) {
@@ -425,25 +417,7 @@ public class LdapMapOperationManager implements AutoCloseable {
                 if (tlsResponse == null) {
                     throw new AuthenticationException("Null TLS Response returned from the authentication");
                 }
-
-                // Explicitly initiate bind with given request controls.
-                // Throws AuthenticationException when authentication fails.
-                authCtx.reconnect(connCtls);
             }
-
-            // Check for password policy response control in the response. If present and forced password change is required, throw an exception.
-            Control[] responseControls = authCtx.getResponseControls();
-            if (responseControls != null) {
-                for (Control control : responseControls) {
-                    if (control instanceof PasswordPolicyResponseControl) {
-                        PasswordPolicyResponseControl response = (PasswordPolicyResponseControl) control;
-                        if (response.changeAfterReset()) {
-                            throw new ChangePasswordAfterResetException();
-                        }
-                    }
-                }
-            }
-
         } catch (AuthenticationException ae) {
             if (logger.isDebugEnabled()) {
                 logger.debugf(ae, "Authentication failed for DN [%s]", dn);
@@ -454,7 +428,7 @@ public class LdapMapOperationManager implements AutoCloseable {
             if (logger.isDebugEnabled()) {
                 logger.debugf(re, "LDAP Connection TimeOut for DN [%s]", dn);
             }
-
+            
             throw re;
 
         } catch (Exception e) {
