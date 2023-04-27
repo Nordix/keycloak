@@ -27,6 +27,7 @@ import javax.ws.rs.core.Cookie;
 import javax.ws.rs.core.HttpHeaders;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -69,7 +70,12 @@ public class CookieHelper {
         StringBuffer cookieBuf = new StringBuffer();
         ServerCookie.appendCookieValue(cookieBuf, 1, name, value, path, domain, comment, maxAge, secure_sameSite, httpOnly, sameSite);
         String cookie = cookieBuf.toString();
-        response.getOutputHeaders().add(HttpHeaders.SET_COOKIE, cookie);
+
+        // Avoid adding cookie if it was already added.
+        List<Object> cookies = response.getOutputHeaders().get(HttpHeaders.SET_COOKIE);
+        if (cookies == null || !cookies.contains(cookie)) {
+            response.getOutputHeaders().add(HttpHeaders.SET_COOKIE, cookie);
+        }
 
         // a workaround for browser in older Apple OSs – browsers ignore cookies with SameSite=None
         if (sameSiteParam == SameSiteAttributeValue.NONE) {
