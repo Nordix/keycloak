@@ -27,7 +27,6 @@ import org.keycloak.storage.ldap.idm.model.LDAPDn;
 import org.keycloak.storage.ldap.idm.query.internal.LDAPQuery;
 import org.keycloak.storage.ldap.idm.store.ldap.extended.PasswordModifyRequest;
 import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
-import org.keycloak.truststore.TruststoreProvider;
 
 import javax.naming.AuthenticationException;
 import javax.naming.Binding;
@@ -512,8 +511,10 @@ public class LDAPOperationManager {
                 SSLSocketFactory sslSocketFactory = null;
                 String useTruststoreSpi = config.getUseTruststoreSpi();
                 if (useTruststoreSpi != null && useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_ALWAYS)) {
-                    TruststoreProvider provider = session.getProvider(TruststoreProvider.class);
-                    sslSocketFactory = provider.getSSLSocketFactory();
+                    // In this code path LDAPContextManager is not used, so we'd need to make sure that
+                    // the SSL socket factory has been initialized before using.
+                    LDAPSSLSocketFactory.initialize(session);
+                    sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 
                 tlsResponse = LDAPContextManager.startTLS(authCtx, "simple", dn, password.toCharArray(), sslSocketFactory);
