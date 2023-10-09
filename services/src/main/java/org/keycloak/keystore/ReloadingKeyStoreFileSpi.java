@@ -24,9 +24,12 @@ import java.nio.file.attribute.FileTime;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.crypto.CryptoIntegration;
+import org.keycloak.common.util.KeystoreUtil.KeystoreFormat;
 
 /**
  * {@code KeyStoreSpi} implementation that hot-reloads {@code KeyStore} when the backing file changes.
@@ -40,7 +43,7 @@ public class ReloadingKeyStoreFileSpi extends DelegatingKeyStoreSpi {
   private final char[] password;
   private FileTime lastModified;
 
-  public ReloadingKeyStoreFileSpi(String type, Path path, String password) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException {
+  public ReloadingKeyStoreFileSpi(String type, Path path, String password) throws KeyStoreException, NoSuchAlgorithmException, CertificateException, IOException, NoSuchProviderException {
     if (password == null) {
       throw new IllegalArgumentException("Password must not be null");
     }
@@ -58,8 +61,9 @@ public class ReloadingKeyStoreFileSpi extends DelegatingKeyStoreSpi {
    * @throws KeyStoreException
    * @throws CertificateException
    * @throws NoSuchAlgorithmException
+   * @throws NoSuchProviderException
    */
-  void refresh() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
+  void refresh() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException, NoSuchProviderException {
     // If keystore has been previously loaded, check the modification timestamp to decide if reload is needed.
     if ((lastModified != null) && (lastModified.compareTo(Files.getLastModifiedTime(path)) >= 0)) {
       // File was not modified since last reload: do nothing.
@@ -68,7 +72,7 @@ public class ReloadingKeyStoreFileSpi extends DelegatingKeyStoreSpi {
 
     // Load keystore from disk.
     log.debugv("Reloading keystore {0}", path);
-    KeyStore ks = KeyStore.getInstance(type);
+    KeyStore ks = CryptoIntegration.getProvider().getKeyStore(KeystoreFormat.valueOf(type));
     ks.load(Files.newInputStream(path), password);
     setKeyStoreDelegate(ks);
     this.lastModified = Files.getLastModifiedTime(path);

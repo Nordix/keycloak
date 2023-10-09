@@ -23,6 +23,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.KeyStoreSpi;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
@@ -124,7 +125,7 @@ public class ReloadingKeyStore extends KeyStore {
          */
         public static KeyStore.Builder fromKeyStoreFile(String type, Path path, String password)
                 throws NoSuchAlgorithmException, CertificateException, KeyStoreException,
-                IOException {
+                IOException, NoSuchProviderException {
             return new Builder(new ReloadingKeyStore(new ReloadingKeyStoreFileSpi(type, path, password)),
                     password.toCharArray());
         }
@@ -140,7 +141,7 @@ public class ReloadingKeyStore extends KeyStore {
          */
         public static KeyStore.Builder fromKeyStoreFile(String type, Path path, String password,
                 Map<String, char[]> aliasPasswords)
-                throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException {
+                throws NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, NoSuchProviderException {
             return new Builder(new ReloadingKeyStore(new ReloadingKeyStoreFileSpi(type, path, password)),
                     password.toCharArray(), aliasPasswords);
         }
