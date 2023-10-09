@@ -25,6 +25,7 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.KeyStoreSpi;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -65,7 +66,7 @@ public abstract class DelegatingKeyStoreSpi extends KeyStoreSpi {
      * Reloads the delegate KeyStore if the underlying files have changed on disk.
      */
     abstract void refresh() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException,
-            InvalidKeySpecException;
+            InvalidKeySpecException, NoSuchProviderException;
 
     /**
      * Calls {@link #refresh()} to refresh the cached KeyStore and if more than

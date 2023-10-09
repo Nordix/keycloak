@@ -23,6 +23,7 @@ import java.security.KeyStore;
 import java.security.KeyStore.Builder;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
@@ -135,7 +136,7 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
                 log.infov("Loading credentials for {0}: {1}", prefix, keyStoreFile);
                 keyStoreBuilder = ReloadingKeyStore.Builder
                         .fromKeyStoreFile(keyStoreType, Paths.get(keyStoreFile), keyStorePassword);
-            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
+            } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | NoSuchProviderException e) {
                 throw new RuntimeException("Failed to initialize " + prefix + " keystore: " + e.toString());
             }
         }

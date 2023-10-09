@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.logging.Logger;
+import org.keycloak.common.util.PemUtils;
 
 /**
  * {@code KeyStoreSpi} implementation that hot-reloads certificates and private keys from PEM files when the backing files change.
@@ -141,14 +142,14 @@ public class ReloadingPemFileKeyStoreSpi extends DelegatingKeyStoreSpi {
         for (KeyFileEntry e : keyFileEntries) {
             String alias = String.format("%04d", i++);
             log.debugv("Adding key entry with alias {0}: {1}, {2}", alias, e.keyPath, e.certPath);
-            ks.setKeyEntry(alias, PemCredentialFactory.generatePrivateKey(e.keyPath), IN_MEMORY_KEYSTORE_PASSWORD,
-                    PemCredentialFactory.generateCertificates(e.certPath));
+            ks.setKeyEntry(alias, PemUtils.decodePrivateKey(new String(Files.readAllBytes(e.keyPath))), IN_MEMORY_KEYSTORE_PASSWORD,
+                    PemUtils.decodeCertificates(new String(Files.readAllBytes(e.certPath))));
         }
         // Load trusted certificates.
         for (CertificateFileEntry e : certificateFileEntries) {
             String alias = String.format("%04d", i++);
             log.debugv("Adding certificate entry with alias {0}: {1}", alias, e.certPath);
-            for (Certificate c : PemCredentialFactory.generateCertificates(e.certPath)) {
+            for (Certificate c : PemUtils.decodeCertificates(new String(Files.readAllBytes(e.certPath)))) {
                 ks.setCertificateEntry(alias, c);
             }
         }
