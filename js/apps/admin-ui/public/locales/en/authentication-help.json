@@ -42,7 +42,8 @@
     "lowerCase": "The number of lowercase letters required in the password string.",
     "digits": "The number of numerical digits required in the password string.",
     "hashAlgorithm": "Applies a hashing algorithm to passwords, so they are not stored in clear text.",
-    "maxLength": "The maximum number of characters allowed in the password."
+    "maxLength": "The maximum number of characters allowed in the password.",
+    "maxAuthAge": "The maximum age of an authentication with which a password may be changed without re-authentication."
   },
   "cibaBackchannelTokenDeliveryMode": "Specifies how the CD (Consumption Device) gets the authentication result and related tokens. This mode will be used by default for the CIBA clients, which do not have other mode explicitly set.",
   "cibaExpiresIn": "The expiration time of the \"auth_req_id\" in seconds since the authentication request was received.",
