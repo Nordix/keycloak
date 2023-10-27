@@ -27,11 +27,13 @@ public interface ServiceAccountConstants {
     String SERVICE_ACCOUNT_USER_PREFIX = "service-account-";
 
     String CLIENT_ID_PROTOCOL_MAPPER = "Client ID";
+    String CLIENT_ID_LEGACY_PROTOCOL_MAPPER = "Client ID (Legacy)";
     String CLIENT_HOST_PROTOCOL_MAPPER = "Client Host";
     String CLIENT_ADDRESS_PROTOCOL_MAPPER = "Client IP Address";
 
     String CLIENT_ID_SESSION_NOTE = "clientId";
     String CLIENT_ID = "client_id";
+    String CLIENT_ID_LEGACY = "clientId";
     String CLIENT_HOST = "clientHost";
     String CLIENT_ADDRESS = "clientAddress";
 

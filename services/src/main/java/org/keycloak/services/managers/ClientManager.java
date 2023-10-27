@@ -192,6 +192,15 @@ public class ClientManager {
                     true, true, true);
             client.addProtocolMapper(protocolMapper);
         }
+
+        if (client.getProtocolMapperByName(OIDCLoginProtocol.LOGIN_PROTOCOL, ServiceAccountConstants.CLIENT_ID_LEGACY_PROTOCOL_MAPPER) == null) {
+            logger.debugf("Creating service account protocol mapper '%s' for client '%s'", ServiceAccountConstants.CLIENT_ID_LEGACY_PROTOCOL_MAPPER, client.getClientId());
+            ProtocolMapperModel protocolMapper = UserSessionNoteMapper.createClaimMapper(ServiceAccountConstants.CLIENT_ID_LEGACY_PROTOCOL_MAPPER,
+                    ServiceAccountConstants.CLIENT_ID_LEGACY,
+                    ServiceAccountConstants.CLIENT_ID_LEGACY, "String",
+                    true, true, true);
+            client.addProtocolMapper(protocolMapper);
+        }
     }
 
     public void clientIdChanged(ClientModel client, ClientRepresentation newClientRepresentation) {
