@@ -59,6 +59,8 @@ public class LDAPConstants {
     public static final String USE_TRUSTSTORE_NEVER = "never";
     public static final String USE_TRUSTSTORE_LDAPS_ONLY = "ldapsOnly";
 
+    public static final String CRL_URI = "crlUri";
+
     public static final String SEARCH_SCOPE = "searchScope";
     public static final String CONNECTION_POOLING = "connectionPooling";
     public static final String CONNECTION_POOLING_AUTHENTICATION = "connectionPoolingAuthentication";

@@ -20,18 +20,37 @@ package org.keycloak.storage.ldap.idm.store.ldap;
 import org.jboss.logging.Logger;
 import org.keycloak.keystore.KeyStoreProvider;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.storage.ldap.LDAPConfig;
 import org.keycloak.truststore.TruststoreProvider;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.CRL;
+import java.security.cert.CRLException;
+import java.security.cert.CertPathBuilder;
+import java.security.cert.CertStore;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
+import java.security.cert.CollectionCertStoreParameters;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.PKIXRevocationChecker;
+import java.security.cert.X509CertSelector;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
 
+import javax.net.ssl.CertPathTrustManagerParameters;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.KeyStoreBuilderParameters;
@@ -52,16 +71,37 @@ public class LDAPSSLSocketFactory extends SSLSocketFactory implements Comparator
     private LDAPSSLSocketFactory() {
     }
 
-    public static synchronized void initialize(KeycloakSession session) {
+    public static synchronized void initialize(KeycloakSession session, LDAPConfig config) {
         if (instance == null) {
             try {
                 // Initialize TrustManager with TrustStore provided by TrustStore SPI.
-                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
                 TruststoreProvider tsp = session.getProvider(TruststoreProvider.class);
                 if (tsp == null) {
                     new RuntimeException("Truststore SPI used but Truststore was not configured");
                 }
-                tmf.init(tsp.getTruststore());
+                KeyStore trustStore = tsp.getTruststore();
+
+                PKIXBuilderParameters pkixParams = new PKIXBuilderParameters(trustStore, new X509CertSelector());
+                String crlFile = config.getCrlUri();
+                if (crlFile != null) {
+                    log.infov("Initializing LDAPSSLSocketFactory with CRL: {0}", crlFile);
+                    Collection<CRL> crls = new HashSet<>();
+                    crls.add(CertificateFactory.getInstance("X.509").generateCRL(Files.newInputStream(Paths.get(crlFile))));
+
+                    List<CertStore> certStores = new ArrayList<>();
+                    certStores.add(CertStore.getInstance("Collection", new CollectionCertStoreParameters(crls)));
+
+                    PKIXRevocationChecker revocationChecker = (PKIXRevocationChecker) CertPathBuilder.getInstance("PKIX").getRevocationChecker();
+                    revocationChecker.setOptions(
+                        EnumSet.of(PKIXRevocationChecker.Option.PREFER_CRLS, PKIXRevocationChecker.Option.NO_FALLBACK));
+
+                    pkixParams.setCertStores(certStores);
+                    pkixParams.addCertPathChecker(revocationChecker);
+                }
+                //pkixParams.setRevocationEnabled(false);
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(new CertPathTrustManagerParameters(pkixParams));
+
                 TrustManager[] tms = tmf.getTrustManagers();
 
                 // Initialize KeyManager with KeyStore provided by KeyStore SPI.
@@ -82,7 +122,7 @@ public class LDAPSSLSocketFactory extends SSLSocketFactory implements Comparator
                 context.init(kms, tms, null);
 
                 instance = context.getSocketFactory();
-            } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException | InvalidAlgorithmParameterException e) {
+            } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException | InvalidAlgorithmParameterException | CRLException | CertificateException | IOException e) {
                 log.error("Failed to initialize SSLContext for LDAP: " + e.toString());
                 throw new RuntimeException("Failed to initialize SSLContext: " + e.toString());
             }

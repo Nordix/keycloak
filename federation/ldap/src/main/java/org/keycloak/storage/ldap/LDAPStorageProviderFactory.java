@@ -20,6 +20,7 @@ package org.keycloak.storage.ldap;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.common.constants.KerberosConstants;
+import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
 import org.keycloak.federation.kerberos.CommonKerberosConfig;
@@ -82,6 +83,7 @@ public class LDAPStorageProviderFactory implements UserStorageProviderFactory<LD
     public static final String PROVIDER_NAME = LDAPConstants.LDAP_PROVIDER;
 
     private LDAPIdentityStoreRegistry ldapStoreRegistry;
+    private String crlFile;
 
     protected static final List<ProviderConfigProperty> configProperties;
 
@@ -237,6 +239,9 @@ public class LDAPStorageProviderFactory implements UserStorageProviderFactory<LD
     public LDAPStorageProvider create(KeycloakSession session, ComponentModel model) {
         Map<ComponentModel, LDAPConfigDecorator> configDecorators = getLDAPConfigDecorators(session, model);
 
+        // Augment LDAP component model with the CRL file attribute, which is currently globally configured via provider configuration.
+        model.put(LDAPConstants.CRL_URI, crlFile);
+
         LDAPIdentityStore ldapIdentityStore = this.ldapStoreRegistry.getLdapStore(session, model, configDecorators);
         return new LDAPStorageProvider(this, session, model, ldapIdentityStore);
     }
@@ -303,6 +308,8 @@ public class LDAPStorageProviderFactory implements UserStorageProviderFactory<LD
     @Override
     public void init(Config.Scope config) {
         this.ldapStoreRegistry = new LDAPIdentityStoreRegistry();
+        crlFile = config.get("crlFile");
+        logger.infov("CRL file configured crlFile={0}", crlFile == null ? "none" : crlFile);
     }
 
     @Override

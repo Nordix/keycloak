@@ -23,6 +23,8 @@ import org.keycloak.models.LDAPConstants;
 import org.keycloak.models.map.storage.ldap.role.config.LdapMapRoleMapperConfig;
 
 import javax.naming.directory.SearchControls;
+
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Properties;

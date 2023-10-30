@@ -259,6 +259,9 @@ public class LDAPConfig {
         return binaryAttributeNames;
     }
 
+    public String getCrlUri() {
+        return config.getFirst(LDAPConstants.CRL_URI);
+    }
 
     @Override
     public boolean equals(Object obj) {

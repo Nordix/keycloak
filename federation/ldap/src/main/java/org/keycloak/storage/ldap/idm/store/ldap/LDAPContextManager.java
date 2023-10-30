@@ -63,7 +63,7 @@ public final class LDAPContextManager implements AutoCloseable {
         String useTruststoreSpi = connectionProperties.getUseTruststoreSpi();
         if (useTruststoreSpi != null && !useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_NEVER)) {
             // Initialize LDAP socket factory that utilizes TrustStore SPI and KeyStore SPI.
-            LDAPSSLSocketFactory.initialize(session);
+            LDAPSSLSocketFactory.initialize(session, connectionProperties);
         }
     }
 

@@ -516,7 +516,7 @@ public class LDAPOperationManager {
                 if (useTruststoreSpi != null && useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_ALWAYS)) {
                     // In this code path LDAPContextManager is not used, so we'd need to make sure that
                     // the SSL socket factory has been initialized before using.
-                    LDAPSSLSocketFactory.initialize(session);
+                    LDAPSSLSocketFactory.initialize(session, config);
                     sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 
@@ -537,7 +537,7 @@ public class LDAPOperationManager {
             if (logger.isDebugEnabled()) {
                 logger.debugf(re, "LDAP Connection TimeOut for DN [%s]", dn);
             }
-            
+
             throw re;
 
         } catch (Exception e) {
