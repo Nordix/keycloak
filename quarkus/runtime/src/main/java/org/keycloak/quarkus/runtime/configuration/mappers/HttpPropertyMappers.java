@@ -22,8 +22,6 @@ import static org.keycloak.quarkus.runtime.configuration.mappers.PropertyMappers
 import static org.keycloak.quarkus.runtime.integration.QuarkusPlatform.addInitializationException;
 
 final class HttpPropertyMappers {
-    private static final String QUARKUS_HTTPS_CERT_FILES = "quarkus.http.ssl.certificate.files";
-    private static final String QUARKUS_HTTPS_CERT_KEY_FILES = "quarkus.http.ssl.certificate.key-files";
 
     private HttpPropertyMappers(){}
 
@@ -67,27 +65,27 @@ final class HttpPropertyMappers {
                         .paramLabel("protocols")
                         .build(),
                 fromOption(HttpOptions.HTTPS_CERTIFICATE_FILE)
-                        .to(QUARKUS_HTTPS_CERT_FILES)
-                        .transformer(HttpPropertyMappers.validatePath(QUARKUS_HTTPS_CERT_FILES))
+                        .to("kc.spi-keystore-default-https-certificate-file")
+                        .transformer(HttpPropertyMappers.validatePath("kc.spi-keystore-default-https-certificate-file"))
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_CERTIFICATE_KEY_FILE)
-                        .to(QUARKUS_HTTPS_CERT_KEY_FILES)
-                        .transformer(HttpPropertyMappers.validatePath(QUARKUS_HTTPS_CERT_KEY_FILES))
+                        .to("kc.spi-keystore-default-https-certificate-key-file")
+                        .transformer(HttpPropertyMappers.validatePath("kc.spi-keystore-default-https-certificate-key-file"))
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_FILE
                         .withRuntimeSpecificDefault(getDefaultKeystorePathValue()))
-                        .to("quarkus.http.ssl.certificate.key-store-file")
+                        .to("kc.spi-keystore-default-https-keystore-file")
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_PASSWORD)
-                        .to("quarkus.http.ssl.certificate.key-store-password")
+                        .to("kc.spi-keystore-default-https-keystore-password")
                         .paramLabel("password")
                         .isMasked(true)
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_TYPE)
-                        .to("quarkus.http.ssl.certificate.key-store-file-type")
+                        .to("kc.spi-keystore-default-https-keystore-type")
                         .mapFrom(SecurityOptions.FIPS_MODE.getKey())
                         .transformer(HttpPropertyMappers::resolveKeyStoreType)
                         .paramLabel("type")
@@ -135,7 +133,7 @@ final class HttpPropertyMappers {
             ConfigValue proceed = context.proceed("kc.https-certificate-file");
 
             if (proceed == null || proceed.getValue() == null) {
-                proceed = getMapper("quarkus.http.ssl.certificate.key-store-file").getConfigValue(context);
+                proceed = getMapper("kc.spi-keystore-default-https-keystore-file").getConfigValue(context);
             }
 
             if (proceed == null || proceed.getValue() == null) {
@@ -174,4 +172,3 @@ final class HttpPropertyMappers {
         return value;
     }
 }
-
