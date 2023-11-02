@@ -17,7 +17,6 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.LDAPConstants;
 import org.keycloak.storage.ldap.LDAPConfig;
 import org.keycloak.tracing.TracingProvider;
-import org.keycloak.truststore.TruststoreProvider;
 import org.keycloak.vault.VaultStringSecret;
 
 import org.jboss.logging.Logger;
@@ -39,6 +38,12 @@ public final class LDAPContextManager implements AutoCloseable {
     public LDAPContextManager(KeycloakSession session, LDAPConfig connectionProperties) {
         this.session = session;
         this.ldapConfig = connectionProperties;
+
+        String useTruststoreSpi = connectionProperties.getUseTruststoreSpi();
+        if (useTruststoreSpi != null && !useTruststoreSpi.equals(LDAPConstants.USE_TRUSTSTORE_NEVER)) {
+            // Initialize LDAP socket factory that utilizes TrustStore SPI and KeyStore SPI.
+            LDAPSSLSocketFactory.initialize(session);
+        }
     }
 
     public static LDAPContextManager create(KeycloakSession session, LDAPConfig connectionProperties) {
@@ -68,8 +73,7 @@ public final class LDAPContextManager implements AutoCloseable {
             if (ldapConfig.isStartTls()) {
                 SSLSocketFactory sslSocketFactory = null;
                 if (LDAPUtil.shouldUseTruststoreSpi(ldapConfig)) {
-                    TruststoreProvider provider = session.getProvider(TruststoreProvider.class);
-                    sslSocketFactory = provider.getSSLSocketFactory();
+                    sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 
                 tlsResponse = startTLS(ldapContext, sslSocketFactory);
@@ -200,7 +204,7 @@ public final class LDAPContextManager implements AutoCloseable {
         // when using Start TLS, use default socket factory for LDAP client but pass the TrustStore SSL socket factory later
         // when calling StartTlsResponse.negotiate(trustStoreSSLSocketFactory)
         if (!ldapConfig.isStartTls() && LDAPUtil.shouldUseTruststoreSpi(ldapConfig)) {
-            env.put("java.naming.ldap.factory.socket", "org.keycloak.truststore.SSLSocketFactory");
+            env.put("java.naming.ldap.factory.socket", "org.keycloak.storage.ldap.idm.store.ldap.LDAPSSLSocketFactory");
         }
 
         String connectionPooling = ldapConfig.getConnectionPooling();
