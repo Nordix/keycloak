@@ -61,7 +61,6 @@ import org.keycloak.storage.ldap.idm.store.ldap.control.PasswordPolicyPasswordCh
 import org.keycloak.storage.ldap.idm.store.ldap.extended.PasswordModifyRequest;
 import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
 import org.keycloak.tracing.TracingProvider;
-import org.keycloak.truststore.TruststoreProvider;
 
 import org.jboss.logging.Logger;
 
@@ -512,8 +511,10 @@ public class LDAPOperationManager {
             if (config.isStartTls()) {
                 SSLSocketFactory sslSocketFactory = null;
                 if (LDAPUtil.shouldUseTruststoreSpi(config)) {
-                    TruststoreProvider provider = session.getProvider(TruststoreProvider.class);
-                    sslSocketFactory = provider.getSSLSocketFactory();
+                    // In this code path LDAPContextManager is not used, so we'd need to make sure that
+                    // the SSL socket factory has been initialized before using.
+                    LDAPSSLSocketFactory.initialize(session);
+                    sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 
                 tlsResponse = LDAPContextManager.startTLS(authCtx, sslSocketFactory);
