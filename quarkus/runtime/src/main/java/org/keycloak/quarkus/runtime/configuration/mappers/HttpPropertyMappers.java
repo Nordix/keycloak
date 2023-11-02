@@ -73,27 +73,27 @@ public final class HttpPropertyMappers {
                         .paramLabel("reload period")
                         .build(),
                 fromOption(HttpOptions.HTTPS_CERTIFICATE_FILE)
-                        .to(QUARKUS_HTTPS_CERT_FILES)
-                        .transformer(HttpPropertyMappers.validatePath(QUARKUS_HTTPS_CERT_FILES))
+                        .to("kc.spi-keystore-default-https-certificate-file")
+                        .transformer(HttpPropertyMappers.validatePath("kc.spi-keystore-default-https-certificate-file"))
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_CERTIFICATE_KEY_FILE)
-                        .to(QUARKUS_HTTPS_CERT_KEY_FILES)
-                        .transformer(HttpPropertyMappers.validatePath(QUARKUS_HTTPS_CERT_KEY_FILES))
+                        .to("kc.spi-keystore-default-https-certificate-key-file")
+                        .transformer(HttpPropertyMappers.validatePath("kc.spi-keystore-default-https-certificate-key-file"))
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_FILE
                         .withRuntimeSpecificDefault(getDefaultKeystorePathValue()))
-                        .to("quarkus.http.ssl.certificate.key-store-file")
+                        .to("kc.spi-keystore-default-https-keystore-file")
                         .paramLabel("file")
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_PASSWORD)
-                        .to("quarkus.http.ssl.certificate.key-store-password")
+                        .to("kc.spi-keystore-default-https-keystore-password")
                         .paramLabel("password")
                         .isMasked(true)
                         .build(),
                 fromOption(HttpOptions.HTTPS_KEY_STORE_TYPE)
-                        .to("quarkus.http.ssl.certificate.key-store-file-type")
+                        .to("kc.spi-keystore-default-https-keystore-type")
                         .mapFrom(SecurityOptions.FIPS_MODE.getKey())
                         .transformer(HttpPropertyMappers::resolveKeyStoreType)
                         .paramLabel("type")
@@ -157,6 +157,18 @@ public final class HttpPropertyMappers {
             }
         }
 
+        /* NOTE:
+
+           Config validation of "https-key-store-*" options are disabled when keystore SPI patches are included.
+           This is because the patch maps these options into the SPI implementation (and not to Quarkus / Vert.x).
+
+           We could drop the Keystore SPI use for the HTTPS server since HTTPS cert reload was implemented
+           in 26.0.0 via "https-certificates-reload-period" config option:
+
+           - https://github.com/keycloak/keycloak/pull/32715
+           - https://github.com/quarkusio/quarkus/pull/38608
+
+
         if (keyStoreFile) {
             CertificateConfig config = new CertificateConfig();
 
@@ -192,6 +204,7 @@ public final class HttpPropertyMappers {
                 throw new PropertyException(Messages.httpsConfigurationNotSet());
             }
         }
+        */
     }
 
     private static BiFunction<Optional<String>, ConfigSourceInterceptorContext, Optional<String>> validatePath(String key) {
@@ -249,4 +262,3 @@ public final class HttpPropertyMappers {
         return value;
     }
 }
-
