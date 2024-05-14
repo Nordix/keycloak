@@ -26,6 +26,7 @@ import org.junit.Test;
 import org.junit.rules.ExternalResource;
 import org.junit.runners.MethodSorters;
 import org.keycloak.common.Profile;
+import org.keycloak.component.ComponentModel;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventType;
 import org.keycloak.models.LDAPConstants;
@@ -124,6 +125,10 @@ public class LDAPUserLoginTest extends AbstractLDAPTest {
             getTestingClient().server().run(session -> {
                 LDAPTestContext ctx = LDAPTestContext.init(session);
                 RealmModel appRealm = ctx.getRealm();
+
+                // Add attribute for client certificate for SASL EXTERNAL authentication in ApacheDS.
+                ComponentModel ldapModel = LDAPTestUtils.getLdapProviderModel(appRealm);
+                LDAPTestUtils.addUserAttributeMapper(appRealm, ldapModel, "user-certificate-mapper", "user_certificate", "userCertificate");
 
                 // Delete all LDAP users
                 LDAPTestUtils.removeAllLDAPUsers(ctx.getLdapProvider(), appRealm);
@@ -330,6 +335,23 @@ public class LDAPUserLoginTest extends AbstractLDAPTest {
     @Test
     @LDAPConnectionParameters(bindCredential=LDAPConnectionParameters.BindCredential.VAULT, bindType=LDAPConnectionParameters.BindType.NONE, encryption=LDAPConnectionParameters.Encryption.STARTTLS)
     public void loginLDAPUserCredentialVaultAuthenticationNoneEncryptionStartTLS() {
+        verifyConnectionUrlProtocolPrefix("ldap://");
+        runLDAPLoginTest();
+    }
+
+
+    // Check LDAP federated user (in)valid login(s) with SASL EXTERNAL authentication & SSL encryption enabled
+    @Test
+    @LDAPConnectionParameters(bindType=LDAPConnectionParameters.BindType.EXTERNAL, encryption=LDAPConnectionParameters.Encryption.SSL)
+    public void loginLDAPUserAuthenticationSASLExternalEncryptionSSL() {
+        verifyConnectionUrlProtocolPrefix("ldaps://");
+        runLDAPLoginTest();
+    }
+
+    // Check LDAP federated user (in)valid login(s) with SASL EXTERNAL authentication & startTLS encryption enabled
+    @Test
+    @LDAPConnectionParameters(bindType=LDAPConnectionParameters.BindType.EXTERNAL, encryption=LDAPConnectionParameters.Encryption.STARTTLS)
+    public void loginLDAPUserAuthenticationSASLExternalEncryptionStartTLS() {
         verifyConnectionUrlProtocolPrefix("ldap://");
         runLDAPLoginTest();
     }
