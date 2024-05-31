@@ -58,7 +58,7 @@ public final class LDAPContextManager implements AutoCloseable {
         try {
             // Create connection but avoid triggering automatic bind request by not setting security principal and credentials yet.
             // That allows us to send optional StartTLS request before binding.
-            ldapContext = new InitialLdapContext(LDAPContextManager.getNonAuthConnectionProperties(ldapConfig), null);
+            ldapContext = new InitialLdapContext(getNonAuthConnectionProperties(ldapConfig), null);
 
             // Send StartTLS request and setup SSL context if needed.
             if (ldapConfig.isStartTls()) {
