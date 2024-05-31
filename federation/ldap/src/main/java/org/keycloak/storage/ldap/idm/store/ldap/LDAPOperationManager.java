@@ -24,6 +24,23 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
+import org.jboss.logging.Logger;
+import org.keycloak.common.util.Time;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.LDAPConstants;
+import org.keycloak.models.ModelException;
+import org.keycloak.storage.ldap.LDAPConfig;
+import org.keycloak.storage.ldap.idm.model.LDAPDn;
+import org.keycloak.storage.ldap.idm.query.Condition;
+import org.keycloak.storage.ldap.idm.query.internal.LDAPQuery;
+import org.keycloak.storage.ldap.idm.query.internal.LDAPQueryConditionsBuilder;
+import org.keycloak.storage.ldap.idm.store.ldap.control.PasswordPolicyPasswordChangeException;
+import org.keycloak.storage.ldap.idm.store.ldap.control.PasswordPolicyControl;
+import org.keycloak.storage.ldap.idm.store.ldap.control.PasswordPolicyControlFactory;
+import org.keycloak.storage.ldap.idm.store.ldap.extended.PasswordModifyRequest;
+import org.keycloak.storage.ldap.mappers.LDAPOperationDecorator;
+import org.keycloak.tracing.TracingProvider;
+
 import javax.naming.AuthenticationException;
 import javax.naming.Binding;
 import javax.naming.Context;
@@ -36,6 +53,7 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.ModificationItem;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import javax.naming.ldap.BasicControl;
 import javax.naming.ldap.Control;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
@@ -496,6 +514,9 @@ public class LDAPOperationManager {
             // Never use connection pool to prevent password caching
             env.put("com.sun.jndi.ldap.connect.pool", "false");
 
+            // Prepare to receive password policy response control.
+            env.put(LdapContext.CONTROL_FACTORIES, PasswordPolicyControlFactory.class.getName());
+
             // Create connection but avoid triggering automatic bind request by not setting security principal and credentials yet.
             // That allows us to send optional StartTLS request before binding.
             authCtx = new InitialLdapContext(env, null);
@@ -524,7 +545,21 @@ public class LDAPOperationManager {
             authCtx.addToEnvironment(Context.SECURITY_CREDENTIALS, password);
 
             // Send bind request. Throws AuthenticationException when authentication fails.
-            authCtx.reconnect(null);
+            authCtx.reconnect(getControls());
+
+            // Check for password policy response control in the response.
+            // If present and forced password change is required, throw an exception.
+            Control[] responseControls = authCtx.getResponseControls();
+            if (responseControls != null) {
+                for (Control control : responseControls) {
+                    if (control instanceof PasswordPolicyControl) {
+                        PasswordPolicyControl response = (PasswordPolicyControl) control;
+                        if (response.changeAfterReset()) {
+                            throw new PasswordPolicyPasswordChangeException();
+                        }
+                    }
+                }
+            }
 
         } catch (AuthenticationException ae) {
             if (logger.isDebugEnabled()) {
@@ -666,6 +701,14 @@ public class LDAPOperationManager {
         } catch (NamingException e) {
             throw new ModelException("Error creating subcontext [" + name + "]", e);
         }
+    }
+
+    private Control[] getControls() {
+        // If enabled, send a passwordPolicyRequest control as non-critical.
+        if (config.isEnableLdapPasswordPolicy()) {
+            return new Control[] { new BasicControl(PasswordPolicyControl.OID, false, null) };
+        }
+        return null;
     }
 
     private String getUuidAttributeName() {
