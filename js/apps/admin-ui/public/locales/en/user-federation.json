@@ -58,6 +58,7 @@
   "ms": "milliseconds",
   "advancedSettings": "Advanced settings",
   "enableLdapv3Password": "Enable the LDAPv3 password modify extended operation",
+  "enableLdapPasswordPolicy": "Enable LDAP password policy",
   "validatePasswordPolicy": "Validate password policy",
   "trustEmail": "Trust email",
   "requiredSettings": "Required Settings",

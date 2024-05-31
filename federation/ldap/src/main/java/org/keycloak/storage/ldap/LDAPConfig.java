@@ -255,6 +255,11 @@ public class LDAPConfig {
         }
     }
 
+    public boolean isEnableLdapPasswordPolicy() {
+        String enableLdapPasswordPolicy = config.getFirst(LDAPConstants.ENABLE_LDAP_PASSWORD_POLICY);
+        return Boolean.parseBoolean(enableLdapPasswordPolicy);
+    }
+
     public void addBinaryAttribute(String attrName) {
         binaryAttributeNames.add(attrName);
     }
