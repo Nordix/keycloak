@@ -192,6 +192,18 @@ public class LDAPRule extends ExternalResource {
                     break;
             }
         }
+
+        Annotation passwordPolicyAnnotations = description.getAnnotation(LDAPPasswordPolicy.class);
+        if (passwordPolicyAnnotations != null) {
+            LDAPPasswordPolicy passwordPolicy = (LDAPPasswordPolicy) passwordPolicyAnnotations;
+
+            log.debugf("Enabling LDAP password policy: mustChange=%s.", passwordPolicy.mustChange());
+
+            serverProperties.setProperty(LDAPEmbeddedServer.PROPERTY_PPOLICY_ENABLED, "true");
+            serverProperties.setProperty(LDAPEmbeddedServer.PROPERTY_PPOLICY_MUST_CHANGE, String.valueOf(passwordPolicy.mustChange()));
+            clientConfig.put(LDAPConstants.ENABLE_LDAP_PASSWORD_POLICY, "true");
+        }
+
         return super.apply(base, description);
     }
 
@@ -269,6 +281,12 @@ public class LDAPRule extends ExternalResource {
             SSL,
             STARTTLS
         }
+    }
+
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface LDAPPasswordPolicy {
+        public boolean mustChange() default false;
     }
 
     public boolean isEmbeddedServer() {
