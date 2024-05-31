@@ -496,13 +496,11 @@ public class LDAPOperationManager {
             // Never use connection pool to prevent password caching
             env.put("com.sun.jndi.ldap.connect.pool", "false");
 
-            if(!this.config.isStartTls()) {
-                env.put(Context.SECURITY_AUTHENTICATION, "simple");
-                env.put(Context.SECURITY_PRINCIPAL, dn.toString());
-                env.put(Context.SECURITY_CREDENTIALS, password);
-            }
-
+            // Create connection but avoid triggering automatic bind request by not setting security principal and credentials yet.
+            // That allows us to send optional StartTLS request before binding.
             authCtx = new InitialLdapContext(env, null);
+
+            // Send StartTLS request and setup SSL context if needed.
             if (config.isStartTls()) {
                 SSLSocketFactory sslSocketFactory = null;
                 if (LDAPUtil.shouldUseTruststoreSpi(config)) {
@@ -512,13 +510,22 @@ public class LDAPOperationManager {
                     sslSocketFactory = LDAPSSLSocketFactory.getDefault();
                 }
 
-                tlsResponse = LDAPContextManager.startTLS(authCtx, "simple", dn.toString(), password, sslSocketFactory);
+                tlsResponse = LDAPContextManager.startTLS(authCtx, sslSocketFactory);
 
                 // Exception should be already thrown by LDAPContextManager.startTLS if "startTLS" could not be established, but rather do some additional check
                 if (tlsResponse == null) {
                     throw new AuthenticationException("Null TLS Response returned from the authentication");
                 }
             }
+
+            // Configure given credentials.
+            authCtx.addToEnvironment(Context.SECURITY_AUTHENTICATION, "simple");
+            authCtx.addToEnvironment(Context.SECURITY_PRINCIPAL, dn.toString());
+            authCtx.addToEnvironment(Context.SECURITY_CREDENTIALS, password);
+
+            // Send bind request. Throws AuthenticationException when authentication fails.
+            authCtx.reconnect(null);
+
         } catch (AuthenticationException ae) {
             if (logger.isDebugEnabled()) {
                 logger.debugf(ae, "Authentication failed for DN [%s]", dn);
