@@ -123,6 +123,36 @@ export const LdapSettingsAdvanced = ({
         </FormGroup>
 
         <FormGroup
+          label={t("enableLdapPasswordPolicy")}
+          labelIcon={
+            <HelpItem
+              helpText={t("user-federation-help:enableLdapPasswordPolicyHelp")}
+              fieldLabelId="user-federation:enableLdapPasswordPolicy"
+            />
+          }
+          fieldId="kc-enable-ldap-password-policy"
+          hasNoPaddingTop
+        >
+          <Controller
+            name="config.enableLdapPasswordPolicy"
+            defaultValue={["false"]}
+            control={form.control}
+            render={({ field }) => (
+              <Switch
+                id={"kc-enable-ldap-password-policy"}
+                data-testid="ldap-password-policy"
+                isDisabled={false}
+                onChange={(value) => field.onChange([`${value}`])}
+                isChecked={field.value[0] === "true"}
+                label={t("common:on")}
+                labelOff={t("common:off")}
+                aria-label={t("enableLdapPasswordPolicy")}
+              />
+            )}
+          ></Controller>
+        </FormGroup>
+
+        <FormGroup
           label={t("trustEmail")}
           labelIcon={
             <HelpItem
