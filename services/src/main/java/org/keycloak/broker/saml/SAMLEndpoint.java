@@ -848,6 +848,12 @@ public class SAMLEndpoint {
     }
 
     private boolean validateInResponseToAttribute(ResponseType responseType, String expectedRequestId) {
+        boolean skipValidation = System.getenv().getOrDefault("SAML_SKIP_IN_RESPONSE_TO_VALIDATION", "false").equalsIgnoreCase("true");
+        if (skipValidation) {
+            logger.debug("Skipping validation of InResponseTo attribute because SAML_SKIP_IN_RESPONSE_TO_VALIDATION is set to true");
+            return true;
+        }
+
         // If we are not expecting a request ID, don't bother
         if (expectedRequestId == null || expectedRequestId.isEmpty())
             return true;
