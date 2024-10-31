@@ -181,9 +181,6 @@ The server supports some of the most commons TLS termination proxies such as:
 
 |NGINX
 |nginx
-
-|Envoy
-|envoy
 |===
 
 To configure how client certificates are retrieved from the requests you need to:
@@ -223,9 +220,5 @@ The NGINX SSL/TLS module does not expose the client certificate chain. Keycloak'
 
 If you are using this provider, see <@links.server id="keycloak-truststore"/> for how
 to configure a Keycloak Truststore.
-
-=== Configuring the Envoy provider
-
-The Envoy TLS module will automatically retrieve the client certificate (and optionally the certificate chain) from the `x-forwarded-client-cert` header.
 
 </@tmpl.guide>
