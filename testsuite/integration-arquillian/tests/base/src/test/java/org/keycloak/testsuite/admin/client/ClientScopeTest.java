@@ -234,12 +234,6 @@ public class ClientScopeTest extends AbstractClientTest {
     }
 
     @Test
-    public void testValidateClientScopeProtocol(){
-        org.keycloak.services.resources.admin.ClientScopeResource.validateClientScopeProtocol("saml");
-        org.keycloak.services.resources.admin.ClientScopeResource.validateClientScopeProtocol("openid-connect");
-        Assert.assertThrows(RuntimeException.class,()->org.keycloak.services.resources.admin.ClientScopeResource.validateClientScopeProtocol("other"));
-    }
-    @Test
     public void testRenameScope() {
         // Create two scopes
         ClientScopeRepresentation scope1Rep = new ClientScopeRepresentation();

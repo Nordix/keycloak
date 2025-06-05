@@ -342,7 +342,7 @@ public class DefaultExportImportManager implements ExportImportManager {
 
         Map<String, ClientScopeModel> clientScopes = new HashMap<>();
         if (rep.getClientScopes() != null) {
-            clientScopes = createClientScopes(session, rep.getClientScopes(), newRealm);
+            clientScopes = createClientScopes(rep.getClientScopes(), newRealm);
         }
         if (rep.getDefaultDefaultClientScopes() != null) {
             for (String clientScopeName : rep.getDefaultDefaultClientScopes()) {
@@ -546,10 +546,10 @@ public class DefaultExportImportManager implements ExportImportManager {
         return appMap;
     }
 
-    private static Map<String, ClientScopeModel> createClientScopes(KeycloakSession session, List<ClientScopeRepresentation> clientScopes, RealmModel realm) {
+    private static Map<String, ClientScopeModel> createClientScopes(List<ClientScopeRepresentation> clientScopes, RealmModel realm) {
         Map<String, ClientScopeModel> appMap = new HashMap<>();
         for (ClientScopeRepresentation resourceRep : clientScopes) {
-            ClientScopeModel app = RepresentationToModel.createClientScope(session, realm, resourceRep);
+            ClientScopeModel app = RepresentationToModel.createClientScope(realm, resourceRep);
             appMap.put(app.getName(), app);
         }
         return appMap;
