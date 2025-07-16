@@ -281,6 +281,10 @@ public class LDAPRule extends ExternalResource {
         }
     }
 
+    public boolean isEmbeddedServer() {
+        return ldapTestConfiguration.isStartEmbeddedLdapServer();
+    }
+
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     public @interface LDAPPasswordPolicy {
