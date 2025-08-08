@@ -126,8 +126,8 @@ export const LdapSettingsAdvanced = ({
           label={t("enableLdapPasswordPolicy")}
           labelIcon={
             <HelpItem
-              helpText={t("user-federation-help:enableLdapPasswordPolicyHelp")}
-              fieldLabelId="user-federation:enableLdapPasswordPolicy"
+              helpText={t("enableLdapPasswordPolicyHelp")}
+              fieldLabelId="enableLdapPasswordPolicy"
             />
           }
           fieldId="kc-enable-ldap-password-policy"
@@ -142,10 +142,10 @@ export const LdapSettingsAdvanced = ({
                 id={"kc-enable-ldap-password-policy"}
                 data-testid="ldap-password-policy"
                 isDisabled={false}
-                onChange={(value) => field.onChange([`${value}`])}
+                onChange={(_event, value) => field.onChange([`${value}`])}
                 isChecked={field.value[0] === "true"}
-                label={t("common:on")}
-                labelOff={t("common:off")}
+                label={t("on")}
+                labelOff={t("off")}
                 aria-label={t("enableLdapPasswordPolicy")}
               />
             )}
