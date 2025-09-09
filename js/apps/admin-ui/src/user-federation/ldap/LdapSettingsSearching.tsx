@@ -139,7 +139,7 @@ export const LdapSettingsSearching = ({
         >
           <Controller
             name="config.pagination"
-            defaultValue={["true"]}
+            defaultValue={["false"]}
             control={form.control}
             render={({ field }) => (
               <Switch

@@ -280,8 +280,7 @@ public class LDAPStorageProviderFactory implements UserStorageProviderFactory<LD
             }
         }
 
-        // This parses the configuration directly as cfg.getConnectionPooling() will take into account the current StartTLS setting
-        if(cfg.isStartTls() && Boolean.parseBoolean(config.getConfig().getFirst(LDAPConstants.CONNECTION_POOLING))) {
+        if(cfg.isStartTls() && cfg.getConnectionPooling() != null) {
             throw new ComponentValidationException("ldapErrorCantEnableStartTlsAndConnectionPooling");
         }
 
