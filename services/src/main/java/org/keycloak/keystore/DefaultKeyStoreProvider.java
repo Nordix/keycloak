@@ -38,7 +38,6 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
     private static final Logger log = Logger.getLogger(DefaultKeyStoreProvider.class);
 
     private KeyStore.Builder ldapKeyStoreBuilder;
-    private KeyStore.Builder httpsKeyStoreBuilder;
 
     @Override
     public void close() {
@@ -68,9 +67,6 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         if (keyStoreIdentifier.equals(LDAP_CLIENT_KEYSTORE)) {
             return ldapKeyStoreBuilder;
         }
-        if (keyStoreIdentifier.equals(HTTPS_SERVER_KEYSTORE)) {
-            return httpsKeyStoreBuilder;
-        }
 
         log.errorv("loadKeyStoreBuilder was called with invalid keystore identifier {0}", keyStoreIdentifier);
         throw new IllegalArgumentException("invalid keystore requested, keyStoreIdentifier:" + keyStoreIdentifier);
@@ -92,7 +88,6 @@ public class DefaultKeyStoreProvider implements KeyStoreProvider, KeyStoreProvid
         }
 
         ldapKeyStoreBuilder = getKeyStore(config, "ldap");
-        httpsKeyStoreBuilder = getKeyStore(config, "https");
     }
 
     private KeyStore.Builder getKeyStore(Scope config, String prefix) {

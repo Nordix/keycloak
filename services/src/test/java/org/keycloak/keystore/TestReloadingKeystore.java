@@ -39,7 +39,7 @@ public class TestReloadingKeystore {
 
     @Test
     public void testLoadJks() throws Exception {
-        Path ksPath = Paths.get(TestReloadingKeystore.class.getResource("keycloak.jks").getFile());
+        Path ksPath = Paths.get(TestReloadingKeystore.class.getResource("keycloak.jks").toURI());
         KeyStore gotKs = ReloadingKeyStore.Builder.fromKeyStoreFile("JKS", ksPath, "secret").getKeyStore();
         assertNotNull(gotKs);
         assertEquals(Arrays.asList("localhost"), Collections.list(gotKs.aliases()));
@@ -47,7 +47,7 @@ public class TestReloadingKeystore {
 
     @Test
     public void testLoadP12() throws Exception {
-        Path ksPath = Paths.get(TestReloadingKeystore.class.getResource("keycloak.p12").getFile());
+        Path ksPath = Paths.get(TestReloadingKeystore.class.getResource("keycloak.p12").toURI());
         KeyStore gotKs = ReloadingKeyStore.Builder.fromKeyStoreFile("JKS", ksPath, "secret").getKeyStore();
         assertNotNull(gotKs);
         assertEquals(Arrays.asList("localhost"), Collections.list(gotKs.aliases()));
@@ -55,9 +55,9 @@ public class TestReloadingKeystore {
 
     @Test
     public void testLoadPemWithRsaKey() throws Exception {
-        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf.pem").getFile());
-        Path keyPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf-key.pem").getFile());
-        Path caPath = Paths.get(TestReloadingKeystore.class.getResource("root-ca.pem").getFile());
+        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf.pem").toURI());
+        Path keyPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf-key.pem").toURI());
+        Path caPath = Paths.get(TestReloadingKeystore.class.getResource("root-ca.pem").toURI());
 
         KeyStore gotKs = ReloadingKeyStore.Builder.fromPem(certPath, keyPath).getKeyStore();
         assertNotNull(gotKs);
@@ -70,9 +70,9 @@ public class TestReloadingKeystore {
 
     @Test
     public void testLoadPemWithEcKey() throws Exception {
-        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("ec-leaf.pem").getFile());
-        Path keyPath = Paths.get(TestReloadingKeystore.class.getResource("ec-leaf-key.pem").getFile());
-        Path caPath = Paths.get(TestReloadingKeystore.class.getResource("root-ca.pem").getFile());
+        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("ec-leaf.pem").toURI());
+        Path keyPath = Paths.get(TestReloadingKeystore.class.getResource("ec-leaf-key.pem").toURI());
+        Path caPath = Paths.get(TestReloadingKeystore.class.getResource("root-ca.pem").toURI());
 
         KeyStore gotKs = ReloadingKeyStore.Builder.fromPem(certPath, keyPath).getKeyStore();
         assertNotNull(gotKs);
@@ -87,7 +87,7 @@ public class TestReloadingKeystore {
 
     @Test
     public void testLoadPemBundle() throws Exception {
-        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf.pem").getFile());
+        Path certPath = Paths.get(TestReloadingKeystore.class.getResource("rsa-leaf.pem").toURI());
         String bundle = new String(Files.readAllBytes(certPath));
 
         X509Certificate[] certs = PemUtils.decodeCertificates(bundle);

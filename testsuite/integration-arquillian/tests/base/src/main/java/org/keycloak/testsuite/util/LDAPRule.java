@@ -187,6 +187,7 @@ public class LDAPRule extends ExternalResource {
                     // Use truststore from TruststoreSPI for STARTTLS connections
                     clientConfig.put(LDAPConstants.USE_TRUSTSTORE_SPI, LDAPConstants.USE_TRUSTSTORE_ALWAYS);
                     clientConfig.put(LDAPConstants.CONNECTION_URL, "ldap://localhost:10389");
+                    clientConfig.put(LDAPConstants.CONNECTION_POOLING, "false");
                     break;
             }
         }
