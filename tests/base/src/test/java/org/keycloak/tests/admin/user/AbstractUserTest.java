@@ -18,7 +18,6 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.credential.CredentialModel;
-import org.keycloak.events.admin.AdminEvent;
 import org.keycloak.events.admin.OperationType;
 import org.keycloak.events.admin.ResourceType;
 import org.keycloak.models.LDAPConstants;
@@ -212,8 +211,14 @@ public class AbstractUserTest {
         try (Response response = managedRealm.admin().users().delete(id)) {
             assertEquals(204, response.getStatus());
         }
-        AdminEvent event = adminEvents.poll();
-        AdminEventAssertion.assertEvent(event, OperationType.DELETE, AdminEventPaths.userResourcePath(id), ResourceType.USER);
+
+        AdminEventRepresentation event = adminEvents.poll();
+
+        AdminEventAssertion.assertEvent(event,
+                OperationType.DELETE,
+                AdminEventPaths.userResourcePath(id),
+                ResourceType.USER);
+
         Assertions.assertNotNull(event.getRepresentation());
         Assertions.assertTrue(event.getRepresentation().contains(id));
     }
