@@ -211,14 +211,9 @@ public class AbstractUserTest {
         try (Response response = managedRealm.admin().users().delete(id)) {
             assertEquals(204, response.getStatus());
         }
-
         AdminEventRepresentation event = adminEvents.poll();
-
-        AdminEventAssertion.assertEvent(event,
-                OperationType.DELETE,
-                AdminEventPaths.userResourcePath(id),
-                ResourceType.USER);
-
+        AdminEventAssertion.assertEvent(event, OperationType.DELETE,
+                AdminEventPaths.userResourcePath(id), ResourceType.USER);
         Assertions.assertNotNull(event.getRepresentation());
         Assertions.assertTrue(event.getRepresentation().contains(id));
     }
