@@ -1094,7 +1094,9 @@ public class StoreFactoryCacheSession implements CachedStoreFactoryProvider {
 
                 if (consumer != null) {
                     for (String id : policies) {
-                        consumer.accept((R) findById(resourceServer, id));
+                        Policy policy = findById(resourceServer, id);
+                        if (policy != null)
+                            consumer.accept((R) policy);
                     }
                 } else {
                     model = policies.stream().map(resourceId -> (R) findById(resourceServer, resourceId))
