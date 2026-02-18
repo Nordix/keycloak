@@ -33,10 +33,13 @@ import org.keycloak.protocol.saml.mappers.AttributeStatementHelper;
 import org.keycloak.organization.protocol.mappers.saml.OrganizationMembershipMapper;
 import org.keycloak.protocol.saml.mappers.RoleListMapper;
 import org.keycloak.protocol.saml.mappers.UserPropertyAttributeStatementMapper;
+import org.keycloak.provider.ProviderConfigProperty;
+import org.keycloak.provider.ProviderConfigurationBuilder;
 import org.keycloak.representations.idm.CertificateRepresentation;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.saml.SignatureAlgorithm;
 import org.keycloak.saml.common.constants.JBossSAMLURIConstants;
+import org.keycloak.saml.processing.api.util.DeflateUtil;
 import org.keycloak.saml.processing.core.saml.v2.constants.X500SAMLProfileConstants;
 
 import org.keycloak.saml.validators.DestinationValidator;
@@ -56,10 +59,11 @@ public class SamlProtocolFactory extends AbstractLoginProtocolFactory {
     private static final String ROLE_LIST_CONSENT_TEXT = "${samlRoleListScopeConsentText}";
 
     private DestinationValidator destinationValidator;
+    private long maxInflatingSize;
 
     @Override
     public Object createProtocolEndpoint(KeycloakSession session, EventBuilder event) {
-        return new SamlService(session, event, destinationValidator);
+        return new SamlService(session, event, maxInflatingSize, destinationValidator);
     }
 
     @Override
@@ -102,6 +106,7 @@ public class SamlProtocolFactory extends AbstractLoginProtocolFactory {
             defaultBuiltins.add(model);
         }
         this.destinationValidator = DestinationValidator.forProtocolMap(config.getArray("knownProtocols"));
+        this.maxInflatingSize = config.getLong("maxInflatingSize", DeflateUtil.DEFAULT_MAX_INFLATING_SIZE);
     }
 
     @Override
@@ -193,4 +198,23 @@ public class SamlProtocolFactory extends AbstractLoginProtocolFactory {
         client.setArtifactBindingIdentifierFrom(clientRep.getClientId());
     }
 
+    /**
+     * Getter for the max inflating size
+     * @return
+     */
+    public long getMaxInflatingSize() {
+        return maxInflatingSize;
+    }
+
+    @Override
+    public List<ProviderConfigProperty> getConfigMetadata() {
+        return ProviderConfigurationBuilder.create()
+                .property()
+                .name("maxInflatingSize")
+                .type("long")
+                .helpText("The maximum inflating size in bytes for the REDIRECT binding.")
+                .defaultValue(DeflateUtil.DEFAULT_MAX_INFLATING_SIZE)
+                .add()
+                .build();
+    }
 }

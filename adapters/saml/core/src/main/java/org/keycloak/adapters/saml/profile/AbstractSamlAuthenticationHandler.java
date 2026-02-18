@@ -74,6 +74,7 @@ import org.keycloak.saml.common.exceptions.ConfigurationException;
 import org.keycloak.saml.common.exceptions.ProcessingException;
 import org.keycloak.saml.common.util.DocumentUtil;
 import org.keycloak.saml.processing.api.saml.v2.sig.SAML2Signature;
+import org.keycloak.saml.processing.api.util.DeflateUtil;
 import org.keycloak.saml.processing.core.saml.v2.common.SAMLDocumentHolder;
 import org.keycloak.saml.processing.core.saml.v2.util.AssertionUtil;
 import org.keycloak.saml.processing.core.util.KeycloakKeySamlExtensionGenerator;
@@ -92,6 +93,8 @@ import org.w3c.dom.NodeList;
  */
 public abstract class AbstractSamlAuthenticationHandler implements SamlAuthenticationHandler {
 
+    public static final String MAX_INFLAFING_SIZE_PROP = "org.keycloak.adapters.saml.maxInflatingSize";
+    private static final long MAX_INFLAFING_SIZE = Long.getLong(MAX_INFLAFING_SIZE_PROP, DeflateUtil.DEFAULT_MAX_INFLATING_SIZE);
     protected static Logger log = Logger.getLogger(WebBrowserSsoAuthenticationHandler.class);
 
     protected final HttpFacade facade;
@@ -169,7 +172,7 @@ public abstract class AbstractSamlAuthenticationHandler implements SamlAuthentic
             if (index > -1) {
                 requestUri = requestUri.substring(0, index);
             }
-            holder = SAMLRequestParser.parseRequestRedirectBinding(samlRequest);
+            holder = SAMLRequestParser.parseRequestRedirectBinding(samlRequest, MAX_INFLAFING_SIZE);
         } else {
             postBinding = true;
             holder = SAMLRequestParser.parseRequestPostBinding(samlRequest);
@@ -591,7 +594,7 @@ public abstract class AbstractSamlAuthenticationHandler implements SamlAuthentic
     }
 
     protected SAMLDocumentHolder extractRedirectBindingResponse(String response) {
-        return SAMLRequestParser.parseRequestRedirectBinding(response);
+        return SAMLRequestParser.parseRequestRedirectBinding(response, MAX_INFLAFING_SIZE);
     }
 
 
