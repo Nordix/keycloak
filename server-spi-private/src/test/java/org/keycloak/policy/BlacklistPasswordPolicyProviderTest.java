@@ -13,7 +13,7 @@ public class BlacklistPasswordPolicyProviderTest {
     public void testUpperCaseInFile() {
         FileBasedPasswordBlacklist blacklist =
                 new FileBasedPasswordBlacklist(Paths.get("src/test/java/org/keycloak/policy"), "short_blacklist.txt");
-        blacklist.lazyInit();
+        blacklist.load();
 
         // all passwords in the deny list are in lower case
         Assert.assertFalse(blacklist.contains("1Password!"));
@@ -23,7 +23,7 @@ public class BlacklistPasswordPolicyProviderTest {
     public void testAlwaysLowercaseInFile() {
         FileBasedPasswordBlacklist blacklist =
                 new FileBasedPasswordBlacklist(Paths.get("src/test/java/org/keycloak/policy"), "short_blacklist.txt");
-        blacklist.lazyInit();
+        blacklist.load();
         Assert.assertTrue(blacklist.contains("1Password!".toLowerCase()));
     }
 
@@ -31,7 +31,7 @@ public class BlacklistPasswordPolicyProviderTest {
     public void testLowerCaseInFile() {
         FileBasedPasswordBlacklist blacklist =
                 new FileBasedPasswordBlacklist(Paths.get("src/test/java/org/keycloak/policy"), "short_blacklist.txt");
-        blacklist.lazyInit();
+        blacklist.load();
         Assert.assertTrue(blacklist.contains("pass1!word"));
     }
 }

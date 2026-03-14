@@ -171,11 +171,14 @@ public class BlacklistPasswordPolicyProviderFactory implements PasswordPolicyPro
             throw new IllegalArgumentException("Password blacklist name must not be empty!");
         }
 
-        return blacklistRegistry.computeIfAbsent(listName, (name) -> {
-            double fpp = getFalsePositiveProbability();
-            FileBasedPasswordBlacklist pbl = new FileBasedPasswordBlacklist(this.blacklistsBasePath, name, fpp);
-            pbl.lazyInit();
-            return pbl;
+        return blacklistRegistry.compute(listName, (name, existing) -> {
+            if (existing == null || existing.hasBeenModified()) {
+                double fpp = getFalsePositiveProbability();
+                FileBasedPasswordBlacklist pbl = new FileBasedPasswordBlacklist(this.blacklistsBasePath, name, fpp);
+                pbl.load();
+                return pbl;
+            }
+            return existing;
         });
     }
 
@@ -245,9 +248,14 @@ public class BlacklistPasswordPolicyProviderFactory implements PasswordPolicyPro
         private final double falsePositiveProbability;
 
         /**
-         * Initialized lazily via {@link #lazyInit()}
+         * Initialized lazily via {@link #load()}
          */
         private BloomFilter<String> blacklist;
+
+        /**
+         * The last modified timestamp of the blacklist file at the time it was loaded.
+         */
+        private long lastModified;
 
         /**
          * Creates a new {@link FileBasedPasswordBlacklist} with {@link #DEFAULT_FALSE_POSITIVE_PROBABILITY}.
@@ -287,24 +295,11 @@ public class BlacklistPasswordPolicyProviderFactory implements PasswordPolicyPro
             return blacklist != null && blacklist.mightContain(password);
         }
 
-        void lazyInit() {
-
-            if (blacklist != null) {
-                return;
-            }
-
-            this.blacklist = load();
-        }
-
-        /**
-         * Loads the referenced blacklist into a {@link BloomFilter}.
-         *
-         * @return the {@link BloomFilter} backing a password blacklist
-         */
-        private BloomFilter<String> load() {
+        void load() {
 
             try {
                 LOG.infof("Loading blacklist start: name=%s path=%s", name, path);
+                lastModified = Files.getLastModifiedTime(path).toMillis();
 
                 long passwordCount = countPasswordsInBlacklistFile();
                 double fpp = getFalsePositiveProbability();
@@ -320,9 +315,19 @@ public class BlacklistPasswordPolicyProviderFactory implements PasswordPolicyPro
                 LOG.infof("Loading blacklist finished: name=%s passwords=%s path=%s falsePositiveProbability=%s expectedFalsePositiveProbability=%s",
                         name, passwordCount, path, fpp, expectedFfp);
 
-                return filter;
+                blacklist = filter;
             } catch (IOException e) {
                 throw new RuntimeException("Loading blacklist failed: Could not load password blacklist path=" + path, e);
+            }
+        }
+
+        boolean hasBeenModified() {
+            try {
+                long currentLastModified = Files.getLastModifiedTime(path).toMillis();
+                return currentLastModified != this.lastModified;
+            } catch (IOException e) {
+                LOG.warnf("Could not read last modified time for file: %s, assuming it has not been modified", name);
+                return false;
             }
         }
 
