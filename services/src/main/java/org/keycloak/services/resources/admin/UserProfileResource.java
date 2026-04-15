@@ -19,7 +19,6 @@ package org.keycloak.services.resources.admin;
 import java.util.Collections;
 
 import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -78,11 +77,8 @@ public class UserProfileResource {
         @APIResponse(responseCode = "403", description = "Forbidden")
     })
     public UPConfig getConfiguration() {
-        if (auth.realm().canViewRealm() || auth.users().canQuery()) {
-            return session.getProvider(UserProfileProvider.class).getConfiguration();
-        } else {
-            throw new ForbiddenException();
-        }
+        auth.requireAnyAdminRole();
+        return session.getProvider(UserProfileProvider.class).getConfiguration();
     }
 
     @GET
@@ -95,12 +91,9 @@ public class UserProfileResource {
         @APIResponse(responseCode = "403", description = "Forbidden")
     })
     public UserProfileMetadata getMetadata() {
-        if (auth.realm().canViewRealm() || auth.users().canQuery()) {
-            UserProfile profile = session.getProvider(UserProfileProvider.class).create(UserProfileContext.USER_API, Collections.emptyMap());
-            return createUserProfileMetadata(session, profile);
-        } else {
-            throw new ForbiddenException();
-        }
+        auth.requireAnyAdminRole();
+        UserProfile profile = session.getProvider(UserProfileProvider.class).create(UserProfileContext.USER_API, Collections.emptyMap());
+        return createUserProfileMetadata(session, profile);
     }
 
     @PUT
