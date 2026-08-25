@@ -68,7 +68,7 @@ import org.jboss.logging.Logger;
  */
 public class ResourceAdminManager {
     private static final Logger logger = Logger.getLogger(ResourceAdminManager.class);
-    public static final String CLIENT_SESSION_HOST_PROPERTY = "${application.session.host}";
+    private static final String CLIENT_SESSION_HOST_PROPERTY = "${application.session.host}";
 
     private KeycloakSession session;
 

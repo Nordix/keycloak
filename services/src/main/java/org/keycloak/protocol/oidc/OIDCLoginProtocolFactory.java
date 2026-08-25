@@ -532,7 +532,7 @@ public class OIDCLoginProtocolFactory extends AbstractLoginProtocolFactory {
             }
         }
         if (rep.isBearerOnly() == null) newClient.setBearerOnly(false);
-        if (rep.getAdminUrl() == null && rep.getRootUrl() != null && !rep.getRootUrl().equals(Constants.AUTH_ADMIN_URL_PROP) && !rep.getRootUrl().equals(Constants.AUTH_BASE_URL_PROP)) {
+        if (rep.getAdminUrl() == null && rep.getRootUrl() != null) {
             newClient.setManagementUrl(rep.getRootUrl());
         }
 
