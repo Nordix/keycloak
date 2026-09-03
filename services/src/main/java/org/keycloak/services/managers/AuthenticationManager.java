@@ -73,6 +73,7 @@ import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
 import org.keycloak.events.EventBuilder;
 import org.keycloak.events.EventType;
+import org.keycloak.exceptions.TokenNotActiveException;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.jose.jws.crypto.HashUtils;
@@ -1552,6 +1553,23 @@ public class AuthenticationManager {
     public static AuthResult verifyIdentityToken(KeycloakSession session, RealmModel realm, UriInfo uriInfo, ClientConnection connection, boolean checkActive, boolean checkTokenType,
                                                  String checkAudience, boolean isCookie, String tokenString, HttpHeaders headers, Consumer<TokenVerifier<AccessToken>> verifierConsumer) {
         try {
+            return verifyIdentityTokenOrFail(session, realm, uriInfo, connection, checkActive, checkTokenType, checkAudience, isCookie, tokenString, headers, verifierConsumer);
+        } catch (VerificationException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Same as {@link #verifyIdentityToken}, but reports a rejected token as a {@link VerificationException} instead of
+     * {@code null}, so that callers can tell why it was rejected. Failures unrelated to the token itself, such as an
+     * invalid session or client, still yield {@code null}.
+     * <p>
+     * The exception message is meant for logging only and must never be returned to clients. Derive any client-facing
+     * description from the exception <em>type</em> instead.
+     */
+    public static AuthResult verifyIdentityTokenOrFail(KeycloakSession session, RealmModel realm, UriInfo uriInfo, ClientConnection connection, boolean checkActive, boolean checkTokenType,
+                                                 String checkAudience, boolean isCookie, String tokenString, HttpHeaders headers, Consumer<TokenVerifier<AccessToken>> verifierConsumer) throws VerificationException {
+        try {
             TokenVerifier<AccessToken> verifier = TokenVerifier.create(tokenString, AccessToken.class)
               .withDefaultChecks()
               .realmUrl(Urls.realmIssuer(uriInfo.getBaseUri(), realm.getName()))
@@ -1584,7 +1602,7 @@ public class AuthenticationManager {
             AccessToken token = verifier.verify().getToken();
             if (checkActive && (!token.isActive() || token.getIat() < realm.getNotBefore())) {
                 logger.debugf("Identity cookie expired. Token expiration: %d, Current Time: %d. token issued at: %d, realm not before: %d", token.getExp(), Time.currentTime(), token.getIat(), realm.getNotBefore());
-                return null;
+                throw new TokenNotActiveException(token, "Token is not active");
             }
 
             KeycloakContext context = session.getContext();
@@ -1642,8 +1660,8 @@ public class AuthenticationManager {
             return new AuthResult(user, userSession, token, client);
         } catch (VerificationException e) {
             logger.debugf("Failed to verify identity token: %s", e.getMessage());
+            throw e;
         }
-        return null;
     }
 
     // Verify client and whether clientSession exists

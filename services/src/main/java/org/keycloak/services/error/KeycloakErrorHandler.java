@@ -39,6 +39,7 @@ import org.keycloak.theme.beans.MessageFormatterMethod;
 import org.keycloak.theme.freemarker.FreeMarkerProvider;
 import org.keycloak.utils.MediaType;
 import org.keycloak.utils.MediaTypeMatcher;
+import org.keycloak.utils.OAuth2Error;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -91,10 +92,19 @@ public class KeycloakErrorHandler implements ExceptionMapper<Throwable> {
                 error.setErrorDescription("For more on this error consult the server log.");
             }
 
-            return Response.status(responseStatus)
+            Response.ResponseBuilder response = Response.status(responseStatus)
                     .type(MediaType.APPLICATION_JSON_TYPE)
-                    .entity(error)
-                    .build();
+                    .entity(error);
+
+            // This handler discards the Response the exception carried, so the RFC 6750 / RFC 7235 challenge has to be
+            // carried over explicitly. Restricted to OAuth2Error.NotAuthorized: plain NotAuthorizedExceptions often
+            // pass a human-readable message as the challenge, which would produce a malformed header.
+            if (throwable instanceof OAuth2Error.NotAuthorized notAuthorized) {
+                response.header(HttpHeaders.WWW_AUTHENTICATE, notAuthorized.getResponse().getHeaderString(HttpHeaders.WWW_AUTHENTICATE));
+                error.setErrorDescription(notAuthorized.getErrorDescription());
+            }
+
+            return response.build();
         }
 
         try {

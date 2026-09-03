@@ -24,12 +24,14 @@ import jakarta.ws.rs.core.UriInfo;
 
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.Profile;
+import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.models.KeycloakContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.services.util.DPoPUtil;
+import org.keycloak.utils.OAuth2Error;
 
 import org.jboss.logging.Logger;
 
@@ -105,7 +107,7 @@ public class AppAuthManager extends AuthenticationManager {
             return null;
         }
         if (authHeaders.size() != 1) {
-            throw new NotAuthorizedException(TOKEN_TYPE_BEARER);
+            throw OAuth2Error.NotAuthorized.noCredentials();
         }
         String authHeader = headers.getRequestHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         return extractTokenStringFromAuthHeader(authHeader);
@@ -125,7 +127,7 @@ public class AppAuthManager extends AuthenticationManager {
         }
         AuthHeader parsedHeader = extractTokenStringFromAuthHeader(authHeader);
         if (parsedHeader == null ){
-            throw new NotAuthorizedException(TOKEN_TYPE_BEARER);
+            throw OAuth2Error.NotAuthorized.noCredentials();
         }
         return parsedHeader.getToken();
     }
@@ -187,6 +189,18 @@ public class AppAuthManager extends AuthenticationManager {
         }
 
         public AuthResult authenticate() {
+            try {
+                return authenticateOrFail();
+            } catch (VerificationException e) {
+                return null;
+            }
+        }
+
+        /**
+         * Same as {@link #authenticate()}, but reports a rejected token as a {@link VerificationException}. See
+         * {@link AuthenticationManager#verifyIdentityTokenOrFail} for how the exception must be treated.
+         */
+        public AuthResult authenticateOrFail() throws VerificationException {
             KeycloakContext ctx = session.getContext();
             if (realm == null) realm = ctx.getRealm();
             if (uriInfo == null) uriInfo = ctx.getUri();
@@ -196,7 +210,7 @@ public class AppAuthManager extends AuthenticationManager {
             if (tokenString == null) tokenString = extractAuthorizationHeaderToken(headers);
             // audience can be null
 
-            return verifyIdentityToken(session, realm, uriInfo, connection, true, true, audience, false, tokenString, headers,
+            return verifyIdentityTokenOrFail(session, realm, uriInfo, connection, true, true, audience, false, tokenString, headers,
                     verifier -> {
                         DPoPUtil.withDPoPVerifier(verifier, realm, new DPoPUtil.Validator(session).request(request).uriInfo(session.getContext().getUri()).accessToken(tokenString));
                         verifier.withChecks(GrantTypeEndpointRestrictionValidator.check(session));

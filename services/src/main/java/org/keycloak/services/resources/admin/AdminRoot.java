@@ -23,7 +23,6 @@ import java.util.Properties;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HttpMethod;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.Path;
@@ -36,6 +35,7 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 
 import org.keycloak.common.Profile;
+import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.Encode;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.jose.jws.JWSInput;
@@ -54,6 +54,7 @@ import org.keycloak.services.resources.admin.fgap.AdminPermissions;
 import org.keycloak.services.resources.admin.info.ServerInfoAdminResource;
 import org.keycloak.theme.Theme;
 import org.keycloak.urls.UrlType;
+import org.keycloak.utils.OAuth2Error;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
@@ -183,31 +184,38 @@ public class AdminRoot {
         HttpHeaders headers = session.getContext().getRequestHeaders();
 
         String tokenString = AppAuthManager.extractAuthorizationHeaderToken(headers);
-        if (tokenString == null) throw new NotAuthorizedException("Bearer");
+        if (tokenString == null) throw OAuth2Error.NotAuthorized.noCredentials();
         AccessToken token;
         try {
             JWSInput input = new JWSInput(tokenString);
             token = input.readJsonContent(AccessToken.class);
         } catch (JWSInputException e) {
-            throw new NotAuthorizedException("Bearer token format error");
+            logger.debugf("Token not valid: %s", e.getMessage());
+            throw OAuth2Error.NotAuthorized.invalidToken(null, "Token format is invalid");
         }
         String realmName = Encode.decodePath(token.getIssuer().substring(token.getIssuer().lastIndexOf('/') + 1));
         RealmManager realmManager = new RealmManager(session);
         RealmModel realm = realmManager.getRealmByName(realmName);
         if (realm == null) {
-            throw new NotAuthorizedException("Unknown realm in token");
+            logger.debugf("Token not valid: unknown realm '%s' in token issuer", realmName);
+            throw OAuth2Error.NotAuthorized.invalidToken(null, "Token verification failed");
         }
         session.getContext().setRealm(realm);
 
-        AuthenticationManager.AuthResult authResult = new AppAuthManager.BearerTokenAuthenticator(session)
-                .setRealm(realm)
-                .setConnection(session.getContext().getConnection())
-                .setHeaders(headers)
-                .authenticate();
+        AuthenticationManager.AuthResult authResult;
+        try {
+            authResult = new AppAuthManager.BearerTokenAuthenticator(session)
+                    .setRealm(realm)
+                    .setConnection(session.getContext().getConnection())
+                    .setHeaders(headers)
+                    .authenticateOrFail();
+        } catch (VerificationException e) {
+            throw OAuth2Error.NotAuthorized.invalidToken(realm, e, realm.getClientByClientId(token.getIssuedFor()));
+        }
 
         if (authResult == null) {
             logger.debug("Token not valid");
-            throw new NotAuthorizedException("Bearer");
+            throw OAuth2Error.NotAuthorized.invalidToken(realm, null, realm.getClientByClientId(token.getIssuedFor()));
         }
 
         session.getContext().setBearerToken(authResult.token());

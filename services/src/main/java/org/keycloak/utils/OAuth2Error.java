@@ -37,6 +37,10 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
 import org.keycloak.OAuthErrorException;
+import org.keycloak.common.VerificationException;
+import org.keycloak.exceptions.TokenNotActiveException;
+import org.keycloak.exceptions.TokenSignatureInvalidException;
+import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.representations.idm.OAuth2ErrorRepresentation;
@@ -179,6 +183,83 @@ public class OAuth2Error {
 
     public WebApplicationException unauthorized() {
         return this.status(Response.Status.UNAUTHORIZED).build();
+    }
+
+    /**
+     * A 401 carrying an RFC 6750 {@code WWW-Authenticate} challenge.
+     * <p>
+     * {@code KeycloakErrorHandler} rebuilds the response for every exception it maps, which drops any header the
+     * exception carried. It preserves the challenge for this type only, so that plain {@link NotAuthorizedException}s -
+     * many of which historically pass a human-readable message into the challenge argument - keep their current
+     * behaviour instead of emitting a malformed challenge.
+     * <p>
+     * Descriptions are derived from the failure <em>type</em>, never from an exception message, so that internal detail
+     * cannot leak into a response.
+     */
+    public static class NotAuthorized extends NotAuthorizedException {
+
+        private final String errorDescription;
+
+        private NotAuthorized(RealmModel realm, String error, String errorDescription) {
+            super(challenge(realm, error, errorDescription));
+            this.errorDescription = errorDescription;
+        }
+
+        private static String challenge(RealmModel realm, String error, String errorDescription) {
+            WWWAuthenticate.BearerChallenge challenge = new WWWAuthenticate.BearerChallenge();
+            challenge.setRealm(realm == null ? null : realm.getName());
+            challenge.setError(error);
+            challenge.setErrorDescription(errorDescription);
+            return challenge.toString();
+        }
+
+        /**
+         * Challenge for a request that presented no usable bearer credentials. Per RFC 6750 §3.1 no error code is
+         * included, since the client has not yet attempted bearer authentication.
+         */
+        public static NotAuthorized noCredentials() {
+            return new NotAuthorized(null, null, null);
+        }
+
+        /**
+         * Challenge for a rejected token, with a client-safe description derived from {@code cause} and from whether the
+         * client named by the token's {@code azp} still resolves. {@code cause} may be {@code null} when the token
+         * verified but the request was rejected afterwards.
+         */
+        public static NotAuthorized invalidToken(RealmModel realm, VerificationException cause, ClientModel tokenClient) {
+            if (cause instanceof TokenNotActiveException) {
+                // One description for all three timing conditions - expiry, a not-yet-valid nbf, and a realm notBefore
+                // push - so the caller is told the token failed on time without being told which condition applied.
+                return invalidToken(realm, "The access token is outside its validity period");
+            }
+            // TokenVerifier.verifySignature() re-wraps its own TokenSignatureInvalidException when a
+            // SignatureVerifierContext is in use, so the failure can arrive either as the type itself or as the cause
+            // of a plain VerificationException.
+            if (cause instanceof TokenSignatureInvalidException
+                    || (cause != null && cause.getCause() instanceof TokenSignatureInvalidException)) {
+                return invalidToken(realm, "Token signature is invalid");
+            }
+            if (tokenClient == null) {
+                // Same condition, wording and disclosure as UserInfoEndpoint, which resolves azp and reports it
+                // directly. Checked last so a token that is both inactive and orphaned reports the timing failure.
+                return invalidToken(realm, "Client not found");
+            }
+            return invalidToken(realm, "Token verification failed");
+        }
+
+        /**
+         * Challenge for a rejected token. {@code errorDescription} must be a fixed, client-safe string.
+         */
+        public static NotAuthorized invalidToken(RealmModel realm, String errorDescription) {
+            return new NotAuthorized(realm, OAuthErrorException.INVALID_TOKEN, errorDescription);
+        }
+
+        /**
+         * The description sent in the challenge, or {@code null} if none. Safe to include in a response body.
+         */
+        public String getErrorDescription() {
+            return errorDescription;
+        }
     }
 
     private static class WWWAuthenticate {
