@@ -24,12 +24,14 @@ import jakarta.ws.rs.core.UriInfo;
 
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.Profile;
+import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.ObjectUtil;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.models.KeycloakContext;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.services.util.DPoPUtil;
+import org.keycloak.utils.OAuth2Error;
 
 import org.jboss.logging.Logger;
 
@@ -125,7 +127,7 @@ public class AppAuthManager extends AuthenticationManager {
         }
         AuthHeader parsedHeader = extractTokenStringFromAuthHeader(authHeader);
         if (parsedHeader == null ){
-            throw new NotAuthorizedException(TOKEN_TYPE_BEARER);
+            throw new OAuth2Error().json(true).unauthorized();
         }
         return parsedHeader.getToken();
     }
@@ -187,6 +189,17 @@ public class AppAuthManager extends AuthenticationManager {
         }
 
         public AuthResult authenticate() {
+            try {
+                return authenticateOrFail();
+            } catch (VerificationException e) {
+                return null;
+            }
+        }
+
+        /**
+         * Like {@link #authenticate()}, but throws instead of returning null when authentication fails.
+         */
+        public AuthResult authenticateOrFail() throws VerificationException {
             KeycloakContext ctx = session.getContext();
             if (realm == null) realm = ctx.getRealm();
             if (uriInfo == null) uriInfo = ctx.getUri();
@@ -196,7 +209,7 @@ public class AppAuthManager extends AuthenticationManager {
             if (tokenString == null) tokenString = extractAuthorizationHeaderToken(headers);
             // audience can be null
 
-            return verifyIdentityToken(session, realm, uriInfo, connection, true, true, audience, false, tokenString, headers,
+            return verifyIdentityTokenOrFail(session, realm, uriInfo, connection, true, true, audience, false, tokenString, headers,
                     verifier -> {
                         DPoPUtil.withDPoPVerifier(verifier, realm, new DPoPUtil.Validator(session).request(request).uriInfo(session.getContext().getUri()).accessToken(tokenString));
                     });

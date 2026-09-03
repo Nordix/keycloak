@@ -23,8 +23,8 @@ import java.util.Properties;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HttpMethod;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -36,7 +36,10 @@ import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
 
 import org.keycloak.common.Profile;
+import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.Encode;
+import org.keycloak.exceptions.TokenNotActiveException;
+import org.keycloak.exceptions.TokenSignatureInvalidException;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.jose.jws.JWSInputException;
@@ -49,11 +52,13 @@ import org.keycloak.services.cors.Cors;
 import org.keycloak.services.managers.AppAuthManager;
 import org.keycloak.services.managers.AuthenticationManager;
 import org.keycloak.services.managers.RealmManager;
+import org.keycloak.services.managers.TokenClientNotFoundException;
 import org.keycloak.services.resources.WelcomeResource;
 import org.keycloak.services.resources.admin.fgap.AdminPermissions;
 import org.keycloak.services.resources.admin.info.ServerInfoAdminResource;
 import org.keycloak.theme.Theme;
 import org.keycloak.urls.UrlType;
+import org.keycloak.utils.OAuth2Error;
 
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.jboss.logging.Logger;
@@ -183,36 +188,56 @@ public class AdminRoot {
         HttpHeaders headers = session.getContext().getRequestHeaders();
 
         String tokenString = AppAuthManager.extractAuthorizationHeaderToken(headers);
-        if (tokenString == null) throw new NotAuthorizedException("Bearer");
+        if (tokenString == null) throw new OAuth2Error().json(true).unauthorized();
         AccessToken token;
         try {
             JWSInput input = new JWSInput(tokenString);
             token = input.readJsonContent(AccessToken.class);
         } catch (JWSInputException e) {
-            throw new NotAuthorizedException("Bearer token format error");
+            logger.debugf("Token not valid: %s", e.getMessage());
+            throw new OAuth2Error().json(true).invalidToken("Token format is invalid");
         }
         String realmName = Encode.decodePath(token.getIssuer().substring(token.getIssuer().lastIndexOf('/') + 1));
         RealmManager realmManager = new RealmManager(session);
         RealmModel realm = realmManager.getRealmByName(realmName);
         if (realm == null) {
-            throw new NotAuthorizedException("Unknown realm in token");
+            logger.debugf("Token not valid: unknown realm '%s' in token issuer", realmName);
+            throw new OAuth2Error().json(true).invalidToken("Token verification failed");
         }
         session.getContext().setRealm(realm);
 
-        AuthenticationManager.AuthResult authResult = new AppAuthManager.BearerTokenAuthenticator(session)
-                .setRealm(realm)
-                .setConnection(session.getContext().getConnection())
-                .setHeaders(headers)
-                .authenticate();
-
-        if (authResult == null) {
-            logger.debug("Token not valid");
-            throw new NotAuthorizedException("Bearer");
+        AuthenticationManager.AuthResult authResult;
+        try {
+            authResult = new AppAuthManager.BearerTokenAuthenticator(session)
+                    .setRealm(realm)
+                    .setConnection(session.getContext().getConnection())
+                    .setHeaders(headers)
+                    .authenticateOrFail();
+        } catch (VerificationException e) {
+            throw toOAuth2Error(realm, e);
         }
 
         session.getContext().setBearerToken(authResult.token());
 
         return new AdminAuth(realm, authResult.token(), authResult.user(), authResult.client());
+    }
+
+    /**
+     * Build an RFC 6750 error response for a failed token verification.
+     */
+    static WebApplicationException toOAuth2Error(RealmModel realm, VerificationException cause) {
+        String description;
+        if (cause instanceof TokenNotActiveException) {
+            description = "The access token is outside its validity period";
+        } else if (cause instanceof TokenSignatureInvalidException
+                || cause.getCause() instanceof TokenSignatureInvalidException) {
+            description = "Token signature is invalid";
+        } else if (cause instanceof TokenClientNotFoundException) {
+            description = "Client not found";
+        } else {
+            description = "Token verification failed";
+        }
+        return new OAuth2Error().realm(realm).json(true).invalidToken(description);
     }
 
     public static UriBuilder realmsUrl(UriInfo uriInfo) {

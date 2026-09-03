@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.OPTIONS;
 import jakarta.ws.rs.Path;
@@ -38,6 +37,7 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.Config;
 import org.keycloak.common.ClientConnection;
 import org.keycloak.common.Profile;
+import org.keycloak.common.VerificationException;
 import org.keycloak.common.Version;
 import org.keycloak.common.util.Environment;
 import org.keycloak.common.util.UriUtils;
@@ -63,6 +63,7 @@ import org.keycloak.theme.ThemeResourcesParser;
 import org.keycloak.theme.freemarker.FreeMarkerProvider;
 import org.keycloak.urls.UrlType;
 import org.keycloak.utils.MediaType;
+import org.keycloak.utils.OAuth2Error;
 import org.keycloak.utils.SecureContextResolver;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -205,14 +206,17 @@ public class AdminConsole {
         }
 
         RealmManager realmManager = new RealmManager(session);
-        AuthenticationManager.AuthResult authResult = new AppAuthManager.BearerTokenAuthenticator(session)
-                .setRealm(realm)
-                .setConnection(clientConnection)
-                .setHeaders(session.getContext().getRequestHeaders())
-                .authenticate();
-
-        if (authResult == null) {
-            throw new NotAuthorizedException("Bearer");
+        String tokenString = AppAuthManager.extractAuthorizationHeaderToken(session.getContext().getRequestHeaders());
+        if (tokenString == null) throw new OAuth2Error().realm(realm).json(true).unauthorized();
+        AuthenticationManager.AuthResult authResult;
+        try {
+            authResult = new AppAuthManager.BearerTokenAuthenticator(session)
+                    .setRealm(realm)
+                    .setConnection(clientConnection)
+                    .setHeaders(session.getContext().getRequestHeaders())
+                    .authenticateOrFail();
+        } catch (VerificationException e) {
+            throw AdminRoot.toOAuth2Error(realm, e);
         }
 
         final String issuedFor = authResult.token().getIssuedFor();
